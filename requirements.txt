@@ -1,0 +1,33 @@
+# Catalog Monitor — зависимости
+# Python 3.14+ (тестировано на 3.14.5)
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+
+# Telegram bot
+aiogram>=3.17.0
+
+# Database
+SQLAlchemy>=2.0.36
+aiosqlite>=0.20.0
+
+# Scheduler
+APScheduler>=3.10.4
+
+# HTTP client
+httpx>=0.28.0
+
+# XML parsing (при отсутствии wheel для вашей версии Python
+# установите Microsoft C++ Build Tools или используйте pre-release wheel)
+lxml>=5.3.0
+
+# Configuration
+python-dotenv>=1.0.1
+pydantic-settings>=2.7.0
+pydantic>=2.10.0
+tzdata>=2024.2
+
+# Testing
+pytest>=8.3.0
+pytest-asyncio>=0.25.0

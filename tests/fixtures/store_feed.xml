@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<companies>
+  <company>
+    <company-id>store-1</company-id>
+    <name lang="ru">Магазин 1</name>
+    <country lang="ru">Россия</country>
+    <address lang="ru">Москва, ул. Примерная, 1</address>
+    <url>https://mczgold.ru</url>
+    <info-page>https://mczgold.ru/info</info-page>
+    <coordinates>
+      <lon>37.50</lon>
+      <lat>55.60</lat>
+    </coordinates>
+    <actualization-date>10.07.2026</actualization-date>
+    <photos>
+      <photo url="https://cdn.example/store.jpg"></photo>
+    </photos>
+    <working-time lang="ru">10:00-22:00</working-time>
+  </company>
+</companies>
