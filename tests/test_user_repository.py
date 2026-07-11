@@ -83,3 +83,16 @@ async def test_log_authorization(uow: UnitOfWork) -> None:
         success=False,
         reason="not_in_whitelist",
     )
+
+
+@pytest.mark.asyncio
+async def test_had_successful_authorization(uow: UnitOfWork) -> None:
+    assert await uow.users.had_successful_authorization(555) is False
+
+    await uow.users.log_authorization(
+        telegram_id=555,
+        phone="79001112233",
+        success=True,
+        reason=None,
+    )
+    assert await uow.users.had_successful_authorization(555) is True

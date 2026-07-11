@@ -19,6 +19,8 @@ from app.services.monitoring.alert_context import (
     format_alert_template,
     truncate_alert_text,
 )
+from app.bot.access_flow import send_access_restricted, send_main_menu
+
 from app.services.monitoring.alert_policy import CRITICAL_ALERT_KEYS, filter_alert_issues
 
 logger = logging.getLogger(__name__)
@@ -87,6 +89,51 @@ class NotificationService:
         for user in users:
             if user.telegram_id:
                 await self.notify_user(user.telegram_id, text)
+
+    @handle_service_errors
+    async def revoke_user_access(
+        self,
+        telegram_id: int,
+        *,
+        blocked: bool = False,
+        revoked: bool = True,
+    ) -> None:
+        """Сразу отзывает доступ: убирает меню и показывает экран ограничения."""
+        try:
+            await send_access_restricted(
+                self._bot,
+                telegram_id,
+                self._settings,
+                blocked=blocked,
+                revoked=revoked,
+            )
+        except TelegramAPIError as exc:
+            logger.error(
+                "Ошибка отзыва доступа пользователю %s: %s",
+                telegram_id,
+                exc,
+            )
+            raise NotificationError(
+                "Не удалось отозвать доступ пользователю",
+                details={"telegram_id": telegram_id, "error": str(exc)},
+            ) from exc
+
+    @handle_service_errors
+    async def restore_user_access(self, telegram_id: int, *, is_admin: bool) -> None:
+        """Восстанавливает главное меню после разблокировки."""
+        try:
+            await self.notify_user(telegram_id, Messages.AUTH_ACCESS_GRANTED)
+            await send_main_menu(self._bot, telegram_id, is_admin=is_admin)
+        except TelegramAPIError as exc:
+            logger.error(
+                "Ошибка восстановления доступа пользователю %s: %s",
+                telegram_id,
+                exc,
+            )
+            raise NotificationError(
+                "Не удалось восстановить доступ пользователю",
+                details={"telegram_id": telegram_id, "error": str(exc)},
+            ) from exc
 
     @handle_service_errors
     async def notify_admin(

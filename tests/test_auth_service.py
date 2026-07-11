@@ -193,3 +193,39 @@ async def test_user_service_is_admin(
     user_service = UserService(session_factory, auth_settings)
     assert await user_service.is_admin(999) is True
     assert await user_service.is_admin(123) is False
+
+
+@pytest.mark.asyncio
+async def test_delete_user_returns_removed_record(
+    session_factory,
+    auth_settings: Settings,
+    sample_user: User,
+) -> None:
+    user_service = UserService(session_factory, auth_settings)
+
+    async with UnitOfWork(session_factory) as uow:
+        created = await uow.users.create(sample_user)
+
+    deleted = await user_service.delete_user(created.id)
+    assert deleted.telegram_id == sample_user.telegram_id
+    assert await user_service.is_authorized(sample_user.telegram_id) is False
+
+
+@pytest.mark.asyncio
+async def test_had_successful_authorization_after_login(
+    session_factory,
+    auth_settings: Settings,
+    sample_user: User,
+) -> None:
+    user_service = UserService(session_factory, auth_settings)
+
+    async with UnitOfWork(session_factory) as uow:
+        await uow.users.create(sample_user)
+        await uow.users.log_authorization(
+            telegram_id=sample_user.telegram_id,
+            phone=sample_user.phone,
+            success=True,
+            reason=None,
+        )
+
+    assert await user_service.had_successful_authorization(sample_user.telegram_id) is True

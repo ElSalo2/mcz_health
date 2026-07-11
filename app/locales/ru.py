@@ -62,10 +62,16 @@ class Messages:
         "Теперь вы можете пользоваться ботом."
     )
     AUTH_ACCESS_REJECTED = "В доступе отказано ❌"
+    AUTH_ACCESS_REVOKED = (
+        "⛔ Ваш доступ к системе отозван администратором.\n\n"
+        "Для восстановления доступа напишите администратору в Telegram:\n"
+        "{admin_contact}"
+    )
     ACCESS_REQUEST_HANDLED_APPROVE = "✅ Пользователь добавлен ({phone})"
     ACCESS_REQUEST_HANDLED_REJECT = "❌ Заявка отклонена"
     ACCESS_REQUEST_ALREADY_AUTHORIZED = "Пользователь уже имеет доступ"
     ACCESS_DENIED_ACTION = "Нажмите кнопку, чтобы написать администратору:"
+    AUTH_SESSION_EXPIRED = "Доступ к боту ограничен. Меню обновлено."
 
     # --- Кнопки меню ---
     BTN_LAST_CHECK = "📊 Последняя проверка"

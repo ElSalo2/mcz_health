@@ -40,9 +40,9 @@ class AdminPanelService:
         return await self._user_service.add_user(phone)
 
     @handle_service_errors
-    async def delete_user(self, user_id: int) -> None:
+    async def delete_user(self, user_id: int) -> User:
         """Удаляет пользователя."""
-        await self._user_service.delete_user(user_id)
+        return await self._user_service.delete_user(user_id)
 
     @handle_service_errors
     async def toggle_block(self, user_id: int) -> User:

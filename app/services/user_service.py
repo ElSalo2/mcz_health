@@ -46,6 +46,12 @@ class UserService:
         return telegram_id == self._settings.admin_id
 
     @handle_service_errors
+    async def had_successful_authorization(self, telegram_id: int) -> bool:
+        """Была ли у пользователя успешная авторизация в прошлом."""
+        async with UnitOfWork(self._session_factory) as uow:
+            return await uow.users.had_successful_authorization(telegram_id)
+
+    @handle_service_errors
     async def list_users(self) -> list[User]:
         """Возвращает список всех пользователей."""
         async with UnitOfWork(self._session_factory) as uow:
@@ -126,11 +132,20 @@ class UserService:
             return created
 
     @handle_service_errors
-    async def delete_user(self, user_id: int) -> None:
-        """Удаляет пользователя."""
+    async def delete_user(self, user_id: int) -> User:
+        """Удаляет пользователя и возвращает удалённую запись."""
         async with UnitOfWork(self._session_factory) as uow:
+            user = await uow.users.get_by_id(user_id)
+            if user is None:
+                raise DatabaseError("Пользователь не найден", details={"id": user_id})
             await uow.users.delete(user_id)
-            logger.info("Удалён пользователь: id=%s", user_id)
+            logger.info(
+                "Удалён пользователь: id=%s, telegram_id=%s, phone=%s",
+                user_id,
+                user.telegram_id,
+                user.phone,
+            )
+            return user
 
     @handle_service_errors
     async def block_user(self, user_id: int) -> User:

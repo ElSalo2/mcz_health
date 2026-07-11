@@ -120,6 +120,18 @@ class UserRepository:
         await self._session.delete(model)
         await self._session.flush()
 
+    async def had_successful_authorization(self, telegram_id: int) -> bool:
+        """Проверяет, была ли у Telegram ID успешная авторизация ранее."""
+        result = await self._session.execute(
+            select(AuthorizationLogModel.id)
+            .where(
+                AuthorizationLogModel.telegram_id == telegram_id,
+                AuthorizationLogModel.success.is_(True),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
     async def log_authorization(
         self,
         telegram_id: int,
@@ -142,6 +154,7 @@ class UserRepository:
             reason=reason,
         )
         self._session.add(log_entry)
+        await self._session.flush()
 
     @staticmethod
     def _to_entity(model: UserModel) -> User:
