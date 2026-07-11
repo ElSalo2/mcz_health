@@ -29,6 +29,8 @@ def _base_env() -> dict[str, str]:
 def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     for key, value in _base_env().items():
         monkeypatch.setenv(key, value)
+    monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "18000")
+    monkeypatch.setenv("FEED_DOWNLOAD_INTERVAL", "18000")
 
     settings = Settings()
 
@@ -38,7 +40,7 @@ def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.check_product_images is True
     assert settings.check_social_links is False
     assert settings.local_check_reserve_seconds == 600
-    assert settings.http_check_budget_seconds == 10140.0
+    assert settings.http_check_budget_seconds == 17400.0
     assert settings.data_retention_days == 3
     assert settings.log_retention_days == 3
     assert settings.db_cleanup_interval == 86400
@@ -47,11 +49,13 @@ def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     for key, value in _base_env().items():
         monkeypatch.setenv(key, value)
+    monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "18000")
+    monkeypatch.setenv("FEED_DOWNLOAD_INTERVAL", "18000")
 
     settings = Settings()
 
-    assert settings.feed_download_interval == 10800
-    assert settings.max_check_duration_seconds == 10740
+    assert settings.feed_download_interval == 18000
+    assert settings.max_check_duration_seconds == 18000
     assert settings.request_timeout == 30.0
     assert settings.log_level == "INFO"
     assert settings.database_url == "sqlite+aiosqlite:///./data/catalog_monitor.db"

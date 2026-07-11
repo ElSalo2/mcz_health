@@ -56,7 +56,7 @@ def test_format_check_stats_for_running_product() -> None:
             "names_checked": 1000,
             "categories_in_feed": 15637,
             "categories_used_by_products": 19,
-            "max_duration_seconds": 10740,
+            "max_duration_seconds": 18000,
         },
     )
     check.started_at = started
@@ -70,7 +70,7 @@ def test_format_check_stats_for_running_product() -> None:
     assert "цен товаров: 1000" in text
     assert "фид сформирован: 11.07.2026 03:00" in text
     assert "начало проверки: 11.07.2026 09:41" in text
-    assert "плановое окончание: 11.07.2026 12:40" in text
+    assert "плановое окончание: 11.07.2026 14:41" in text
 
 
 def test_format_last_check_report_shows_previous_while_running() -> None:

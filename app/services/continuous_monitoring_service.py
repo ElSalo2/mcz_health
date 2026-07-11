@@ -28,9 +28,7 @@ class ContinuousMonitoringService:
     1. Скачать фиды товаров и магазинов.
     2. Проверить все объекты из фидов (не более max_check_duration_seconds).
     3. При нарушениях — отправить алерты пользователям.
-    4. По завершении — скачать новый фид и повторить цикл.
-    5. Минимальный интервал между скачиваниями — feed_download_interval (3 ч).
-    6. При таймауте или прерывании — сразу начать новый цикл со свежими фидами.
+    4. По завершении или таймауту — сразу скачать новый фид и повторить цикл.
     """
 
     def __init__(
@@ -87,33 +85,18 @@ class ContinuousMonitoringService:
         self._orchestrator.clear_abort()
 
     async def _run_loop(self) -> None:
-        """Основной бесконечный цикл: скачать → проверить → скачать."""
+        """Основной бесконечный цикл: скачать → проверить → повторить."""
         while not self._stop_event.is_set():
-            cycle_started = time.perf_counter()
             try:
                 completed_normally = await self._run_cycle()
             except Exception:
                 logger.exception("Ошибка в цикле фонового мониторинга")
                 completed_normally = False
 
-            if not completed_normally:
-                if not self._stop_event.is_set():
-                    logger.info(
-                        "Прерванный цикл завершён — сразу запускаем новый со свежими фидами"
-                    )
-                continue
-
-            elapsed = time.perf_counter() - cycle_started
-            wait_seconds = max(0.0, self._settings.feed_download_interval - elapsed)
-            if wait_seconds > 0 and not self._stop_event.is_set():
+            if not completed_normally and not self._stop_event.is_set():
                 logger.info(
-                    "Ожидание %.0f сек до следующего скачивания фида",
-                    wait_seconds,
+                    "Прерванный цикл завершён — сразу запускаем новый со свежими фидами"
                 )
-                try:
-                    await asyncio.wait_for(self._stop_event.wait(), timeout=wait_seconds)
-                except TimeoutError:
-                    pass
 
     @handle_service_errors
     async def _run_cycle(self) -> bool:
@@ -133,7 +116,10 @@ class ContinuousMonitoringService:
         try:
             results = await asyncio.wait_for(cycle_task, timeout=remaining)
         except TimeoutError:
-            logger.error("Превышен лимит длительности проверки (2 ч 59 мин)")
+            logger.error(
+                "Превышен лимит длительности проверки (%d мин)",
+                self._settings.max_check_duration_seconds // 60,
+            )
             await self._abort_active_cycle(cycle_task)
             return False
         except asyncio.CancelledError:

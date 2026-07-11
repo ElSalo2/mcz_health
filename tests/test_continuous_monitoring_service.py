@@ -97,7 +97,57 @@ async def test_run_cycle_success_returns_true(settings: Settings) -> None:
 
 
 @pytest.mark.asyncio
-async def test_interrupted_cycle_skips_feed_interval_wait(settings: Settings) -> None:
+async def test_completed_cycle_starts_immediately(settings: Settings) -> None:
+    calls = 0
+
+    async def cycle_behavior(**_: object) -> list[CheckResult]:
+        nonlocal calls
+        calls += 1
+        feed_check = FeedCheck(
+            id=calls,
+            feed_type=FeedType.PRODUCT,
+            status=CheckStatus.SUCCESS,
+            started_at=None,
+            finished_at=None,
+            duration_seconds=1.0,
+            item_count=10,
+            sha256=None,
+            content_size=None,
+            feed_date=None,
+            critical_count=0,
+            warning_count=0,
+            triggered_by="background",
+        )
+        return [
+            CheckResult(
+                feed_type=FeedType.PRODUCT,
+                feed_check=feed_check,
+                issues=[],
+                new_issues=[],
+                resolved_issues=[],
+                skipped=False,
+                finished_at=None,
+            )
+        ]
+
+    orchestrator = MagicMock()
+    orchestrator.run_full_cycle = cycle_behavior
+    orchestrator.request_abort = MagicMock()
+    orchestrator.clear_abort = MagicMock()
+    orchestrator.fail_incomplete_checks = AsyncMock()
+
+    service = ContinuousMonitoringService(settings, orchestrator, MagicMock())
+    settings.feed_download_interval = 10_000
+
+    service.start()
+    await asyncio.sleep(0.25)
+    await service.stop()
+
+    assert calls >= 2
+
+
+@pytest.mark.asyncio
+async def test_interrupted_cycle_starts_next_immediately(settings: Settings) -> None:
     calls = 0
 
     async def cycle_behavior(**_: object) -> list[CheckResult]:

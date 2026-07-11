@@ -52,14 +52,17 @@ class Settings(BaseSettings):
 
     # --- Непрерывный мониторинг ---
     feed_download_interval: int = Field(
-        default=10800,
+        default=18000,
         ge=60,
-        description="Интервал скачивания фидов (секунды). По умолчанию 3 часа.",
+        description=(
+            "Устаревший параметр интервала скачивания (секунды). "
+            "Новый цикл запускается сразу после завершения предыдущего."
+        ),
     )
     max_check_duration_seconds: int = Field(
-        default=10740,
+        default=18000,
         ge=60,
-        description="Максимальная длительность одной проверки (секунды). По умолчанию 2 ч 59 мин.",
+        description="Максимальная длительность одной проверки (секунды). По умолчанию 5 часов.",
     )
     local_check_reserve_seconds: int = Field(
         default=600,
@@ -144,10 +147,6 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_configuration(self) -> Settings:
-        if self.max_check_duration_seconds >= self.feed_download_interval:
-            raise ValueError(
-                "MAX_CHECK_DURATION_SECONDS должна быть меньше FEED_DOWNLOAD_INTERVAL"
-            )
         if self.local_check_reserve_seconds >= self.max_check_duration_seconds:
             raise ValueError(
                 "LOCAL_CHECK_RESERVE_SECONDS должна быть меньше MAX_CHECK_DURATION_SECONDS"
