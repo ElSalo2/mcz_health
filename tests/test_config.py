@@ -51,6 +51,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv(key, value)
     monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "18000")
     monkeypatch.setenv("FEED_DOWNLOAD_INTERVAL", "18000")
+    monkeypatch.setenv("ADMIN_CONTACT_PHONE", "")
 
     settings = Settings()
 

@@ -1,6 +1,7 @@
 """Тесты детальной статистики проверок."""
 
 from datetime import UTC, datetime
+from unittest.mock import patch
 
 from app.bot.formatters.check_formatter import format_check_stats_block, format_last_check_report
 from app.domain.entities.feed_check import FeedCheck
@@ -37,6 +38,7 @@ def _check(
 def test_format_check_stats_for_running_product() -> None:
     started = datetime(2026, 7, 11, 6, 41, tzinfo=UTC)
     feed_date = datetime(2026, 7, 11, 0, 0, tzinfo=UTC)
+    now = datetime(2026, 7, 11, 8, 0, tzinfo=UTC)
     check = _check(
         feed_type=FeedType.PRODUCT,
         status=CheckStatus.RUNNING,
@@ -57,11 +59,14 @@ def test_format_check_stats_for_running_product() -> None:
             "categories_in_feed": 15637,
             "categories_used_by_products": 19,
             "max_duration_seconds": 18000,
+            "http_slot_seconds": 1.0,
+            "planned_duration_seconds": 4300.0,
         },
     )
     check.started_at = started
     check.feed_date = feed_date
-    text = format_check_stats_block(check)
+    with patch("app.bot.formatters.check_formatter.utc_now", return_value=now):
+        text = format_check_stats_block(check)
     assert "товаров в фиде: 1000" in text
     assert "категорий в фиде: 15637" in text
     assert "используется товарами: 19" in text
@@ -70,7 +75,7 @@ def test_format_check_stats_for_running_product() -> None:
     assert "цен товаров: 1000" in text
     assert "фид сформирован: 11.07.2026 03:00" in text
     assert "начало проверки: 11.07.2026 09:41" in text
-    assert "плановое окончание: 11.07.2026 14:41" in text
+    assert "плановое окончание: 11.07.2026 11:54" in text
 
 
 def test_format_last_check_report_shows_previous_while_running() -> None:

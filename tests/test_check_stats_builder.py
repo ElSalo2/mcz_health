@@ -66,6 +66,24 @@ def test_store_pages_planned_counts_unique_page_urls(settings: Settings) -> None
     assert stats.max_duration_seconds == settings.max_check_duration_seconds
 
 
+def test_planned_duration_uses_http_slot_and_cycle_url_count(settings: Settings) -> None:
+    stores = [
+        _store(url="https://mczgold.ru", info_page="https://mczgold.ru"),
+    ]
+    stats = build_initial_stats(
+        feed_type=FeedType.STORE,
+        items=stores,
+        parsed=None,
+        settings=settings,
+        feed_extractor=FeedExtractor(),
+        skip_http=False,
+        http_slot_seconds=2.0,
+        cycle_http_url_count=100,
+    )
+    assert stats.http_slot_seconds == 2.0
+    assert stats.planned_duration_seconds == pytest.approx(12.0 + 2.0 * stats.http_total_planned)
+
+
 def test_product_stats_counts_categories_used_by_products(settings: Settings) -> None:
     product_xml = (FIXTURES / "product_feed.xml").read_bytes()
     parsed = XmlParser().parse(product_xml, FeedType.PRODUCT.value)

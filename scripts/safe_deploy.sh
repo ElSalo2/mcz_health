@@ -9,7 +9,7 @@
 #   bash scripts/safe_deploy.sh status    # показать активные проверки
 #
 # Перезапуск (если не systemd):
-#   RESTART_CMD="systemctl restart mcz-health" bash scripts/safe_deploy.sh
+#   RESTART_CMD="systemctl restart mcz_health" bash scripts/safe_deploy.sh
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 DB_PATH="${DB_PATH:-$ROOT/data/catalog_monitor.db}"
-RESTART_CMD="${RESTART_CMD:-systemctl restart mcz-health}"
+RESTART_CMD="${RESTART_CMD:-systemctl restart mcz_health}"
 
 mode="${1:-deploy}"
 

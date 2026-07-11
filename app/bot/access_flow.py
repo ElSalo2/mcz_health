@@ -20,8 +20,8 @@ from app.locales.ru import Messages
 logger = logging.getLogger(__name__)
 
 
-def access_denied_text(config: Settings) -> str:
-    return Messages.AUTH_ACCESS_DENIED.format(admin_contact=config.admin_contact_html)
+def access_denied_text() -> str:
+    return Messages.AUTH_ACCESS_DENIED
 
 
 def user_blocked_text(config: Settings) -> str:
@@ -60,12 +60,18 @@ async def send_access_restricted(
     revoked: bool = False,
 ) -> None:
     """Отправляет пользователю экран ограничения доступа и убирает меню."""
+    if not blocked and not revoked:
+        await bot.send_message(
+            chat_id=chat_id,
+            text=access_denied_text(),
+            reply_markup=hide_reply_keyboard(),
+        )
+        return
+
     if revoked:
         text = access_revoked_text(config)
-    elif blocked:
-        text = user_blocked_text(config)
     else:
-        text = access_denied_text(config)
+        text = user_blocked_text(config)
 
     await bot.send_message(chat_id=chat_id, text=text, reply_markup=hide_reply_keyboard())
     await send_admin_contact_card(bot, chat_id, config)

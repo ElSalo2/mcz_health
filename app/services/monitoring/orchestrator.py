@@ -147,7 +147,8 @@ class CheckOrchestrator:
                 ]
 
                 http_urls = collect_all_http_urls(products, stores, self._settings)
-                self._throttle_planner.plan_for_url_count(len(http_urls))
+                cycle_http_url_count = len(http_urls)
+                http_slot_seconds = self._throttle_planner.plan_for_url_count(cycle_http_url_count)
 
                 results: list[CheckResult] = []
                 for feed_type in FEED_CHECK_ORDER:
@@ -156,6 +157,8 @@ class CheckOrchestrator:
                         await self._finalize_feed(
                             prepared[feed_type],
                             triggered_by=triggered_by,
+                            http_slot_seconds=http_slot_seconds,
+                            cycle_http_url_count=cycle_http_url_count,
                         )
                     )
 
@@ -251,7 +254,14 @@ class CheckOrchestrator:
 
         return prepared
 
-    async def _finalize_feed(self, prepared: PreparedFeed, *, triggered_by: str) -> CheckResult:
+    async def _finalize_feed(
+        self,
+        prepared: PreparedFeed,
+        *,
+        triggered_by: str,
+        http_slot_seconds: float = 0.0,
+        cycle_http_url_count: int = 0,
+    ) -> CheckResult:
         started_at = prepared.downloaded_at or utc_now()
         timer = time.perf_counter()
         feed_type = prepared.feed_type
@@ -265,6 +275,8 @@ class CheckOrchestrator:
             settings=self._settings,
             feed_extractor=self._feed_extractor,
             skip_http=False,
+            http_slot_seconds=http_slot_seconds,
+            cycle_http_url_count=cycle_http_url_count,
         )
 
         async with UnitOfWork(self._session_factory) as uow:
@@ -312,6 +324,9 @@ class CheckOrchestrator:
             issues.extend(change.issues)
             skip_http = change.skip_deep_check
             initial_stats.skip_http = skip_http
+            if skip_http:
+                initial_stats.http_slot_seconds = 0.0
+                initial_stats.planned_duration_seconds = 0.0
 
             freshness = self._change_detector.check_feed_freshness(feed_type, prepared.parsed)
             if freshness is not None:

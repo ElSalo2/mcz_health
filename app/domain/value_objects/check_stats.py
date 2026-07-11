@@ -43,6 +43,8 @@ class CheckStats:
     skip_http: bool = False
 
     max_duration_seconds: int = 0
+    http_slot_seconds: float = 0.0
+    planned_duration_seconds: float = 0.0
 
     extra: dict[str, int] = field(default_factory=dict)
 

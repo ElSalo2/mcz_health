@@ -89,6 +89,34 @@ def _stats_from_check(check: FeedCheck) -> CheckStats:
     return CheckStats.from_dict(load_json(check.stats_json))
 
 
+def estimate_planned_finish_at(
+    *,
+    started_at: datetime | None,
+    stats: CheckStats,
+    now: datetime | None = None,
+) -> datetime | None:
+    """Оценивает плановое окончание проверки по троттлингу URL, а не по лимиту цикла."""
+    if started_at is None or stats.skip_http:
+        return None
+
+    started = started_at
+    if started.tzinfo is None:
+        started = started.replace(tzinfo=UTC)
+
+    remaining_http = max(0, stats.http_total_planned - stats.http_total_checked)
+    if stats.http_slot_seconds > 0 and stats.http_total_checked > 0 and remaining_http > 0:
+        reference = now if now is not None else utc_now()
+        return reference + timedelta(seconds=remaining_http * stats.http_slot_seconds)
+
+    if stats.planned_duration_seconds > 0:
+        return started + timedelta(seconds=stats.planned_duration_seconds)
+
+    if stats.max_duration_seconds > 0:
+        return started + timedelta(seconds=stats.max_duration_seconds)
+
+    return None
+
+
 def _format_running_timing_lines(check: FeedCheck, stats: CheckStats) -> list[str]:
     """Дополняет блок статистики сроками для выполняющейся проверки."""
     if check.status != CheckStatus.RUNNING:
@@ -102,11 +130,8 @@ def _format_running_timing_lines(check: FeedCheck, stats: CheckStats) -> list[st
             else Messages.FINISHED_AT_UNKNOWN,
         ),
     ]
-    if check.started_at and stats.max_duration_seconds > 0:
-        started = check.started_at
-        if started.tzinfo is None:
-            started = started.replace(tzinfo=UTC)
-        planned_finish = started + timedelta(seconds=stats.max_duration_seconds)
+    planned_finish = estimate_planned_finish_at(started_at=check.started_at, stats=stats)
+    if planned_finish is not None:
         lines.append(
             Messages.CHECK_STATS_PLANNED_FINISH.format(
                 planned_finish=format_datetime_moscow(planned_finish),
