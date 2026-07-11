@@ -12,6 +12,7 @@ class CheckStats:
 
     items_in_feed: int = 0
     categories_in_feed: int = 0
+    categories_used_by_products: int = 0
 
     product_pages_planned: int = 0
     product_pages_checked: int = 0

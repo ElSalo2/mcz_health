@@ -25,6 +25,7 @@ class ContainerMiddleware(BaseMiddleware):
     ) -> Any:
         data["container"] = self._container
         data["config"] = self._container.config
+        data["bot"] = self._container.bot
         data["auth_service"] = self._container.auth_service
         data["user_service"] = self._container.user_service
         data["notification_service"] = self._container.notification_service

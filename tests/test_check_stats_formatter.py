@@ -54,6 +54,8 @@ def test_format_check_stats_for_running_product() -> None:
             "prices_checked": 1000,
             "stocks_checked": 1000,
             "names_checked": 1000,
+            "categories_in_feed": 15637,
+            "categories_used_by_products": 19,
             "max_duration_seconds": 10740,
         },
     )
@@ -61,6 +63,8 @@ def test_format_check_stats_for_running_product() -> None:
     check.feed_date = feed_date
     text = format_check_stats_block(check)
     assert "товаров в фиде: 1000" in text
+    assert "категорий в фиде: 15637" in text
+    assert "используется товарами: 19" in text
     assert "250 из 1 000" in text
     assert "HTTP 200: 240" in text
     assert "цен товаров: 1000" in text

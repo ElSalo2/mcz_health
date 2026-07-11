@@ -52,6 +52,56 @@ class UserService:
             return await uow.users.list_all()
 
     @handle_service_errors
+    async def approve_access_request(
+        self,
+        *,
+        phone: str,
+        telegram_id: int,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        username: str | None = None,
+    ) -> User:
+        """Добавляет пользователя по заявке администратора с привязкой Telegram."""
+        normalized_phone = normalize_phone(phone)
+        async with UnitOfWork(self._session_factory) as uow:
+            existing_by_telegram = await uow.users.get_by_telegram_id(telegram_id)
+            if existing_by_telegram is not None and existing_by_telegram.is_active:
+                return existing_by_telegram
+
+            existing = await uow.users.get_by_phone(normalized_phone)
+            if existing is not None:
+                if existing.status == UserStatus.BLOCKED:
+                    existing.status = UserStatus.ACTIVE
+                existing.telegram_id = telegram_id
+                existing.first_name = first_name
+                existing.last_name = last_name
+                existing.username = username
+                updated = await uow.users.update(existing)
+                logger.info(
+                    "Пользователь одобрен по заявке (обновлён): telegram_id=%s, phone=%s",
+                    telegram_id,
+                    normalized_phone,
+                )
+                return updated
+
+            user = User(
+                id=None,
+                phone=normalized_phone,
+                telegram_id=telegram_id,
+                first_name=first_name,
+                last_name=last_name,
+                username=username,
+                status=UserStatus.ACTIVE,
+            )
+            created = await uow.users.create(user)
+            logger.info(
+                "Пользователь одобрен по заявке (создан): telegram_id=%s, phone=%s",
+                telegram_id,
+                normalized_phone,
+            )
+            return created
+
+    @handle_service_errors
     async def add_user(self, phone: str) -> User:
         """Добавляет пользователя по номеру телефона."""
         normalized_phone = normalize_phone(phone)

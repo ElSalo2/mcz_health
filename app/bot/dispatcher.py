@@ -6,7 +6,7 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.filters.admin import IsAdminFilter
-from app.bot.handlers import admin, checks, menu, start
+from app.bot.handlers import access_request, admin, checks, menu, start
 from app.bot.middlewares.auth import AuthMiddleware
 from app.bot.middlewares.container import ContainerMiddleware
 from app.bot.middlewares.logging import LoggingMiddleware
@@ -31,6 +31,9 @@ def create_dispatcher(container: AppContainer) -> Dispatcher:
     dispatcher.update.middleware(ContainerMiddleware(container))
 
     dispatcher.include_router(start.router)
+
+    access_request.router.callback_query.filter(admin_filter)
+    dispatcher.include_router(access_request.router)
 
     auth_middleware = AuthMiddleware()
     protected_routers = (menu.router, checks.router)

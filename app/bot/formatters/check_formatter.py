@@ -127,6 +127,10 @@ def format_check_stats_block(check: FeedCheck) -> str:
         lines.append(Messages.CHECK_STATS_ITEMS.format(count=stats.items_in_feed))
         if stats.categories_in_feed:
             lines.append(Messages.CHECK_STATS_CATEGORIES.format(count=stats.categories_in_feed))
+        if stats.categories_used_by_products:
+            lines.append(
+                Messages.CHECK_STATS_CATEGORIES_USED.format(count=stats.categories_used_by_products)
+            )
         if stats.skip_http:
             lines.append(Messages.CHECK_STATS_HTTP_SKIPPED)
         else:

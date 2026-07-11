@@ -7,6 +7,7 @@ from typing import Any
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
+from aiogram.types import InlineKeyboardMarkup
 
 from app.core.config import Settings
 from app.core.error_handler import handle_service_errors
@@ -88,10 +89,25 @@ class NotificationService:
                 await self.notify_user(user.telegram_id, text)
 
     @handle_service_errors
-    async def notify_admin(self, text: str) -> None:
+    async def notify_admin(
+        self,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> None:
         """Отправляет сообщение администратору."""
-        await self.notify_user(self._settings.admin_id, text)
-        logger.info("Уведомление отправлено администратору")
+        try:
+            await self._bot.send_message(
+                chat_id=self._settings.admin_id,
+                text=text,
+                reply_markup=reply_markup,
+            )
+            logger.info("Уведомление отправлено администратору")
+        except TelegramAPIError as exc:
+            logger.error("Ошибка отправки уведомления администратору: %s", exc)
+            raise NotificationError(
+                "Не удалось отправить уведомление администратору",
+                details={"admin_id": self._settings.admin_id, "error": str(exc)},
+            ) from exc
 
     @handle_service_errors
     async def notify_new_issues(self, issues: list[Issue]) -> None:

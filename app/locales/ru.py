@@ -49,15 +49,20 @@ class Messages:
         'Нажмите кнопку «Авторизоваться» ниже.'
     )
     ACCESS_REQUEST_ADMIN = (
-        "🔔 Новый запрос на доступ\n\n"
-        "Имя:\n{first_name}\n\n"
-        "Фамилия:\n{last_name}\n\n"
-        "Username:\n@{username}\n\n"
-        "Telegram ID:\n{id}\n\n"
-        "Телефон:\n{phone}\n\n"
-        "Дата:\n{date}\n\n"
-        "Время:\n{time}"
+        "Новая заявка на авторизацию\n\n"
+        "Имя: {first_name}\n"
+        "Фамилия: {last_name}\n"
+        "Username: {username}\n"
+        "Telegram ID: {telegram_id}"
     )
+    AUTH_ACCESS_GRANTED = (
+        "Доступ предоставлен ✅\n"
+        "Теперь вы можете пользоваться ботом."
+    )
+    AUTH_ACCESS_REJECTED = "В доступе отказано ❌"
+    ACCESS_REQUEST_HANDLED_APPROVE = "✅ Пользователь добавлен ({phone})"
+    ACCESS_REQUEST_HANDLED_REJECT = "❌ Заявка отклонена"
+    ACCESS_REQUEST_ALREADY_AUTHORIZED = "Пользователь уже имеет доступ"
 
     # --- Кнопки меню ---
     BTN_LAST_CHECK = "📊 Последняя проверка"
@@ -65,6 +70,8 @@ class Messages:
     BTN_ABOUT = "ℹ️ О системе"
     BTN_USERS = "👥 Пользователи"
     BTN_SHARE_CONTACT = "🔐 Авторизоваться"
+    BTN_ACCESS_APPROVE = "✅ Добавить пользователя"
+    BTN_ACCESS_REJECT = "❌ Отклонить"
 
     # --- Общие ---
     ABOUT_SYSTEM = (
@@ -112,7 +119,8 @@ class Messages:
     CHECK_STATS_HEADER = "Что проверяем:"
     CHECK_STATS_ITEMS = "• товаров в фиде: {count}"
     CHECK_STATS_STORES = "• магазинов в фиде: {count}"
-    CHECK_STATS_CATEGORIES = "• категорий в дереве: {count}"
+    CHECK_STATS_CATEGORIES = "• категорий в фиде: {count}"
+    CHECK_STATS_CATEGORIES_USED = "• используется товарами: {count}"
     CHECK_STATS_PRODUCT_PAGES = "• URL страниц товаров: {progress}, HTTP 200: {ok}"
     CHECK_STATS_PRODUCT_IMAGES = "• URL изображений товаров: {progress}, HTTP 200: {ok}"
     CHECK_STATS_STORE_PAGES = "• URL страниц магазинов: {progress}, HTTP 200: {ok}"

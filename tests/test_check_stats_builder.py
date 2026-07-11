@@ -6,8 +6,12 @@ import pytest
 
 from app.core.config import Settings
 from app.domain.enums import FeedType
-from app.infrastructure.xml.extractors import FeedExtractor, StoreItem
+from app.infrastructure.xml.extractors import FeedExtractor, ProductItem, StoreItem
+from app.infrastructure.xml.parser import XmlParser
 from app.services.monitoring.check_stats_builder import build_initial_stats
+from pathlib import Path
+
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
 @pytest.fixture
@@ -60,3 +64,19 @@ def test_store_pages_planned_counts_unique_page_urls(settings: Settings) -> None
     )
     assert stats.store_pages_planned == 2
     assert stats.max_duration_seconds == settings.max_check_duration_seconds
+
+
+def test_product_stats_counts_categories_used_by_products(settings: Settings) -> None:
+    product_xml = (FIXTURES / "product_feed.xml").read_bytes()
+    parsed = XmlParser().parse(product_xml, FeedType.PRODUCT.value)
+    products = FeedExtractor().extract_products(parsed.root)
+    stats = build_initial_stats(
+        feed_type=FeedType.PRODUCT,
+        items=products,
+        parsed=parsed,
+        settings=settings,
+        feed_extractor=FeedExtractor(),
+        skip_http=False,
+    )
+    assert stats.categories_in_feed == 3
+    assert stats.categories_used_by_products == 2

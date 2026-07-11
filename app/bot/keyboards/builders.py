@@ -10,6 +10,8 @@ ADMIN_REFRESH = "admin:refresh"
 ADMIN_ADD = "admin:add"
 ADMIN_CANCEL = "admin:cancel"
 ADMIN_BACK = "admin:back"
+ACCESS_APPROVE_PREFIX = "access:approve:"
+ACCESS_REJECT_PREFIX = "access:reject:"
 
 
 def contact_keyboard() -> ReplyKeyboardMarkup:
@@ -69,5 +71,29 @@ def admin_cancel_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text=Messages.BTN_CANCEL, callback_data=ADMIN_CANCEL)],
+        ]
+    )
+
+
+def _phone_callback_token(phone: str) -> str:
+    """Кодирует телефон для callback_data (только цифры, без +)."""
+    return "".join(ch for ch in phone if ch.isdigit())
+
+
+def access_request_keyboard(telegram_id: int, phone: str) -> InlineKeyboardMarkup:
+    """Клавиатура заявки на доступ для администратора."""
+    phone_token = _phone_callback_token(phone)
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=Messages.BTN_ACCESS_APPROVE,
+                    callback_data=f"{ACCESS_APPROVE_PREFIX}{telegram_id}:{phone_token}",
+                ),
+                InlineKeyboardButton(
+                    text=Messages.BTN_ACCESS_REJECT,
+                    callback_data=f"{ACCESS_REJECT_PREFIX}{telegram_id}",
+                ),
+            ]
         ]
     )

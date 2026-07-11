@@ -35,9 +35,16 @@ class MockNotificationService:
 
     def __init__(self) -> None:
         self.admin_messages: list[str] = []
+        self.admin_keyboards: int = 0
+        self.user_messages: list[tuple[int, str]] = []
 
-    async def notify_admin(self, text: str) -> None:
+    async def notify_admin(self, text: str, reply_markup=None) -> None:
         self.admin_messages.append(text)
+        if reply_markup is not None:
+            self.admin_keyboards += 1
+
+    async def notify_user(self, telegram_id: int, text: str) -> None:
+        self.user_messages.append((telegram_id, text))
 
 
 @pytest.fixture
@@ -114,8 +121,8 @@ async def test_auth_access_denied_not_in_whitelist(
     assert result.access_denied is True
     assert result.user_blocked is False
     assert len(notification.admin_messages) == 1
-    assert "Новый запрос на доступ" in notification.admin_messages[0]
-    assert "+79009998877" in notification.admin_messages[0]
+    assert "Новая заявка на авторизацию" in notification.admin_messages[0]
+    assert notification.admin_keyboards == 1
 
 
 @pytest.mark.asyncio

@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from aiogram.types import Contact, User as TelegramUser
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -16,12 +14,11 @@ from app.domain.entities.user import User
 from app.domain.enums import UserStatus
 from app.infrastructure.database.unit_of_work import UnitOfWork
 from app.infrastructure.database.utils import normalize_phone
+from app.bot.keyboards.builders import access_request_keyboard
 from app.locales.ru import Messages
 from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
-
-MOSCOW_TZ = ZoneInfo("Europe/Moscow")
 
 
 @dataclass(slots=True)
@@ -188,14 +185,16 @@ class AuthService:
             )
 
     async def _notify_admin_access_request(self, telegram_user: TelegramUser, phone: str) -> None:
-        now = datetime.now(MOSCOW_TZ)
+        username = (
+            f"@{telegram_user.username}"
+            if telegram_user.username
+            else "не указан"
+        )
         text = Messages.ACCESS_REQUEST_ADMIN.format(
             first_name=telegram_user.first_name or "—",
             last_name=telegram_user.last_name or "—",
-            username=telegram_user.username or "не указан",
-            id=telegram_user.id,
-            phone=phone,
-            date=now.strftime("%d.%m.%Y"),
-            time=now.strftime("%H:%M"),
+            username=username,
+            telegram_id=telegram_user.id,
         )
-        await self._notification_service.notify_admin(text)
+        keyboard = access_request_keyboard(telegram_user.id, phone)
+        await self._notification_service.notify_admin(text, reply_markup=keyboard)

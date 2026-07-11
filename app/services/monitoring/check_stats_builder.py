@@ -48,6 +48,9 @@ def build_initial_stats(
         stats.product_images_planned = _count_product_images(products, settings)
         if parsed is not None:
             stats.categories_in_feed = len(feed_extractor.extract_categories(parsed.root))
+        stats.categories_used_by_products = len(
+            {product.category_id for product in products if product.category_id}
+        )
         stats.names_checked = len(products)
         stats.required_fields_checked = len(products) * 4
         stats.stocks_checked = len(products)
