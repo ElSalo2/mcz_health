@@ -8,7 +8,12 @@ from aiogram import F, Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
-from app.bot.keyboards.builders import contact_keyboard, main_menu_keyboard
+from app.bot.keyboards.builders import (
+    admin_contact_keyboard,
+    contact_keyboard,
+    hide_reply_keyboard,
+    main_menu_keyboard,
+)
 from app.core.config import Settings
 from app.core.exceptions import AppError
 from app.locales.ru import Messages
@@ -18,6 +23,26 @@ from app.services.user_service import UserService
 logger = logging.getLogger(__name__)
 
 router = Router(name="start")
+
+
+def _access_denied_message(config: Settings) -> str:
+    return Messages.AUTH_ACCESS_DENIED.format(admin_contact=config.admin_contact_html)
+
+
+def _user_blocked_message(config: Settings) -> str:
+    return Messages.AUTH_USER_BLOCKED.format(admin_contact=config.admin_contact_html)
+
+
+async def _reply_access_denied(message: Message, config: Settings, *, blocked: bool) -> None:
+    text = _user_blocked_message(config) if blocked else _access_denied_message(config)
+    await message.answer(text, reply_markup=hide_reply_keyboard())
+    await message.answer(
+        Messages.ACCESS_DENIED_ACTION,
+        reply_markup=admin_contact_keyboard(
+            config.admin_telegram_url,
+            config.admin_telegram_handle,
+        ),
+    )
 
 
 @router.message(CommandStart())
@@ -51,6 +76,7 @@ async def handle_contact(
     message: Message,
     auth_service: AuthService,
     user_service: UserService,
+    config: Settings,
 ) -> None:
     """Обрабатывает отправку контакта для авторизации."""
     if message.from_user is None or message.contact is None:
@@ -68,10 +94,7 @@ async def handle_contact(
         return
 
     if result.access_denied:
-        if result.user_blocked:
-            await message.answer(Messages.AUTH_USER_BLOCKED, reply_markup=contact_keyboard())
-        else:
-            await message.answer(Messages.AUTH_ACCESS_DENIED, reply_markup=contact_keyboard())
+        await _reply_access_denied(message, config, blocked=result.user_blocked)
         return
 
     if result.success:

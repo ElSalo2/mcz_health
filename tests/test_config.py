@@ -56,7 +56,8 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert settings.feed_download_interval == 18000
     assert settings.max_check_duration_seconds == 18000
-    assert settings.request_timeout == 30.0
+    assert settings.admin_telegram_handle == "@el_salo"
+    assert settings.admin_telegram_url == "https://t.me/el_salo"
     assert settings.log_level == "INFO"
     assert settings.database_url == "sqlite+aiosqlite:///./data/catalog_monitor.db"
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.bot.keyboards.builders import access_request_keyboard
+from app.bot.keyboards.builders import access_request_keyboard, admin_contact_keyboard
 from app.core.config import Settings
 from app.infrastructure.database.unit_of_work import UnitOfWork
 from app.services.user_service import UserService
@@ -32,6 +32,14 @@ def test_access_request_keyboard_callback_data() -> None:
     assert approve_btn.callback_data == "access:approve:123456789:79001234567"
     assert reject_btn.callback_data == "access:reject:123456789"
     assert len(approve_btn.callback_data) <= 64
+
+
+@pytest.mark.asyncio
+async def test_access_denied_keyboard_links_to_admin() -> None:
+    keyboard = admin_contact_keyboard("https://t.me/el_salo", "@el_salo")
+    button = keyboard.inline_keyboard[0][0]
+    assert button.url == "https://t.me/el_salo"
+    assert "@el_salo" in button.text
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,12 @@
 """Построители клавиатур."""
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+)
 
 from app.domain.entities.user import User
 from app.domain.enums import UserStatus
@@ -23,6 +29,25 @@ def contact_keyboard() -> ReplyKeyboardMarkup:
         resize_keyboard=True,
         one_time_keyboard=True,
     )
+
+
+def admin_contact_keyboard(admin_telegram_url: str, admin_handle: str) -> InlineKeyboardMarkup:
+    """Кнопка для перехода в личные сообщения администратору."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"{Messages.BTN_CONTACT_ADMIN} ({admin_handle})",
+                    url=admin_telegram_url,
+                )
+            ]
+        ]
+    )
+
+
+def hide_reply_keyboard() -> ReplyKeyboardRemove:
+    """Скрывает reply-клавиатуру (например, после отказа в доступе)."""
+    return ReplyKeyboardRemove()
 
 
 def main_menu_keyboard(is_admin: bool = False) -> ReplyKeyboardMarkup:

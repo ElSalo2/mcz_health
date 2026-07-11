@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # --- Telegram ---
     bot_token: str = Field(min_length=10, description="Токен Telegram-бота")
     admin_id: int = Field(gt=0, description="Telegram ID администратора")
+    admin_telegram_username: str = Field(
+        default="el_salo",
+        min_length=1,
+        description="Username администратора в Telegram (без @).",
+    )
 
     # --- Фиды ---
     store_feed_url: HttpUrl = Field(
@@ -172,6 +177,23 @@ class Settings(BaseSettings):
     def max_check_duration_minutes(self) -> int:
         """Максимальная длительность проверки в минутах (для документации)."""
         return self.max_check_duration_seconds // 60
+
+    @property
+    def admin_telegram_handle(self) -> str:
+        """Username администратора с префиксом @."""
+        username = self.admin_telegram_username.strip().lstrip("@")
+        return f"@{username}"
+
+    @property
+    def admin_telegram_url(self) -> str:
+        """Ссылка для открытия чата с администратором."""
+        username = self.admin_telegram_username.strip().lstrip("@")
+        return f"https://t.me/{username}"
+
+    @property
+    def admin_contact_html(self) -> str:
+        """Кликабельный контакт администратора для HTML-сообщений."""
+        return f'<a href="{self.admin_telegram_url}">{self.admin_telegram_handle}</a>'
 
     @property
     def project_root(self) -> Path:
