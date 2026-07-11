@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from dataclasses import dataclass, field
@@ -17,9 +18,12 @@ from app.domain.enums import CheckStatus, FeedType
 from app.domain.value_objects.check_result import CheckResult
 from app.infrastructure.database.unit_of_work import UnitOfWork
 from app.infrastructure.database.utils import utc_now
+from app.infrastructure.http.resource_checker import ResourceChecker
 from app.infrastructure.xml.extractors import FeedExtractor, ProductItem, StoreItem, resolve_store_feed_date
 from app.infrastructure.xml.parser import ParsedFeed
 from app.services.monitoring.change_detector import ChangeDetector
+from app.services.monitoring.check_stats_builder import build_initial_stats
+from app.services.monitoring.check_stats_tracker import CheckStatsTracker
 from app.services.monitoring.feed_availability import FeedAvailabilityChecker
 from app.services.monitoring.feed_structure import FeedStructureChecker
 from app.services.monitoring.issue_registry import IssueRegistry
@@ -30,6 +34,7 @@ from app.services.monitoring.store_validator import StoreValidator
 from app.services.monitoring.url_collector import collect_all_http_urls
 from app.services.monitoring.url_throttle import UrlThrottlePlanner
 from app.services.notification_service import NotificationService
+from app.infrastructure.database.utils import dump_json
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +70,7 @@ class CheckOrchestrator:
         stock_validator: StockValidator,
         change_detector: ChangeDetector,
         feed_extractor: FeedExtractor,
+        resource_checker: ResourceChecker,
         throttle_planner: UrlThrottlePlanner,
         notification_service: NotificationService,
     ) -> None:
@@ -78,13 +84,33 @@ class CheckOrchestrator:
         self._stock_validator = stock_validator
         self._change_detector = change_detector
         self._feed_extractor = feed_extractor
+        self._resource_checker = resource_checker
         self._throttle_planner = throttle_planner
         self._notification_service = notification_service
         self._running_checks: set[FeedType] = set()
+        self._stats_tracker: CheckStatsTracker | None = None
+        self._cycle_lock = asyncio.Lock()
+        self._abort_requested = False
+        self._resource_checker.set_abort_check(self._is_abort_requested)
 
     @property
     def is_running(self) -> bool:
         return bool(self._running_checks)
+
+    def request_abort(self) -> None:
+        """Запрашивает прерывание текущего цикла проверки."""
+        self._abort_requested = True
+
+    def clear_abort(self) -> None:
+        """Сбрасывает флаг прерывания после завершения цикла."""
+        self._abort_requested = False
+
+    def _is_abort_requested(self) -> bool:
+        return self._abort_requested
+
+    def _raise_if_aborted(self) -> None:
+        if self._abort_requested:
+            raise asyncio.CancelledError("Цикл проверки прерван")
 
     @handle_service_errors
     async def run_background_check(self, feed_type: FeedType) -> CheckResult:
@@ -98,60 +124,75 @@ class CheckOrchestrator:
     @handle_service_errors
     async def run_full_cycle(self, triggered_by: str) -> list[CheckResult]:
         """Выполняет полный цикл проверки обоих фидов."""
-        self._running_checks.update(FEED_CHECK_ORDER)
-        try:
-            prepared: dict[FeedType, PreparedFeed] = {}
-            for feed_type in FEED_CHECK_ORDER:
-                prepared[feed_type] = await self._prepare_feed(feed_type)
+        async with self._cycle_lock:
+            self._abort_requested = False
+            self._running_checks.update(FEED_CHECK_ORDER)
+            self._stats_tracker = CheckStatsTracker(self._session_factory)
+            self._resource_checker.set_stats_tracker(self._stats_tracker)
+            try:
+                prepared: dict[FeedType, PreparedFeed] = {}
+                for feed_type in FEED_CHECK_ORDER:
+                    self._raise_if_aborted()
+                    prepared[feed_type] = await self._prepare_feed(feed_type)
 
-            products = [
-                item
-                for item in prepared[FeedType.PRODUCT].items
-                if isinstance(item, ProductItem)
-            ]
-            stores = [
-                item
-                for item in prepared[FeedType.STORE].items
-                if isinstance(item, StoreItem)
-            ]
+                products = [
+                    item
+                    for item in prepared[FeedType.PRODUCT].items
+                    if isinstance(item, ProductItem)
+                ]
+                stores = [
+                    item
+                    for item in prepared[FeedType.STORE].items
+                    if isinstance(item, StoreItem)
+                ]
 
-            http_urls = collect_all_http_urls(products, stores, self._settings)
-            self._throttle_planner.plan_for_url_count(len(http_urls))
+                http_urls = collect_all_http_urls(products, stores, self._settings)
+                self._throttle_planner.plan_for_url_count(len(http_urls))
 
-            results: list[CheckResult] = []
-            for feed_type in FEED_CHECK_ORDER:
-                results.append(
-                    await self._finalize_feed(
-                        prepared[feed_type],
-                        triggered_by=triggered_by,
+                results: list[CheckResult] = []
+                for feed_type in FEED_CHECK_ORDER:
+                    self._raise_if_aborted()
+                    results.append(
+                        await self._finalize_feed(
+                            prepared[feed_type],
+                            triggered_by=triggered_by,
+                        )
                     )
-                )
 
-            new_issues = [issue for result in results for issue in result.new_issues]
-            resolved_issues = [issue for result in results for issue in result.resolved_issues]
-            if new_issues:
-                await self._notification_service.notify_new_issues(new_issues)
-            if resolved_issues:
-                await self._notification_service.notify_resolved_issues(resolved_issues)
+                new_issues = [issue for result in results for issue in result.new_issues]
+                resolved_issues = [
+                    issue for result in results for issue in result.resolved_issues
+                ]
+                if new_issues:
+                    await self._notification_service.notify_new_issues(new_issues)
+                if resolved_issues:
+                    await self._notification_service.notify_resolved_issues(resolved_issues)
 
-            return results
-        finally:
-            self._running_checks.clear()
+                return results
+            finally:
+                self._resource_checker.set_stats_tracker(None)
+                self._stats_tracker = None
+                self._running_checks.clear()
 
     async def fail_incomplete_checks(self) -> None:
-        """Помечает зависшие проверки как неуспешные при превышении лимита времени."""
+        """Помечает зависшие проверки как неуспешные (после сбоя или остановки процесса)."""
         finished_at = utc_now()
         async with UnitOfWork(self._session_factory) as uow:
             running_checks = await uow.checks.list_running()
+            if not running_checks:
+                return
             for check in running_checks:
                 duration = None
-                if check.started_at is not None:
-                    duration = (finished_at - check.started_at).total_seconds()
+                started_at = check.started_at
+                if started_at is not None:
+                    if started_at.tzinfo is None:
+                        started_at = started_at.replace(tzinfo=finished_at.tzinfo)
+                    duration = (finished_at - started_at).total_seconds()
                 await uow.checks.update(
                     FeedCheck(
                         id=check.id,
                         feed_type=check.feed_type,
-                        status=CheckStatus.FAILED,
+                        status=CheckStatus.INTERRUPTED,
                         started_at=check.started_at,
                         finished_at=finished_at,
                         duration_seconds=duration,
@@ -164,6 +205,11 @@ class CheckOrchestrator:
                         triggered_by=check.triggered_by,
                     )
                 )
+            logger.warning(
+                "Закрыто незавершённых проверок: %s (%s)",
+                len(running_checks),
+                ", ".join(f"{check.feed_type.value}#{check.id}" for check in running_checks),
+            )
 
     @handle_service_errors
     async def run_check(self, feed_type: FeedType, triggered_by: str) -> CheckResult:
@@ -210,6 +256,16 @@ class CheckOrchestrator:
         timer = time.perf_counter()
         feed_type = prepared.feed_type
         feed_date = prepared.parsed.feed_date if prepared.parsed else None
+        skip_http = False
+        price_result: PriceValidationResult | None = None
+        initial_stats = build_initial_stats(
+            feed_type=feed_type,
+            items=prepared.items,
+            parsed=prepared.parsed,
+            settings=self._settings,
+            feed_extractor=self._feed_extractor,
+            skip_http=False,
+        )
 
         async with UnitOfWork(self._session_factory) as uow:
             feed_check = await uow.checks.create(
@@ -220,15 +276,19 @@ class CheckOrchestrator:
                     started_at=started_at,
                     finished_at=None,
                     duration_seconds=None,
-                    item_count=None,
+                    item_count=len(prepared.items) if prepared.items else None,
                     sha256=None,
                     content_size=None,
                     feed_date=feed_date,
                     critical_count=0,
                     warning_count=0,
                     triggered_by=triggered_by,
+                    stats_json=dump_json(initial_stats.to_dict()),
                 )
             )
+
+        if self._stats_tracker is not None:
+            self._stats_tracker.bind_check(feed_type, feed_check.id, initial_stats)
 
         issues = list(prepared.issues)
         item_count = len(prepared.items)
@@ -238,8 +298,6 @@ class CheckOrchestrator:
             else None
         )
         content_size = len(prepared.content) if prepared.content is not None else None
-        skip_http = False
-        price_result: PriceValidationResult | None = None
 
         if not prepared.failed and prepared.parsed is not None:
             async with UnitOfWork(self._session_factory) as uow:
@@ -253,6 +311,7 @@ class CheckOrchestrator:
             )
             issues.extend(change.issues)
             skip_http = change.skip_deep_check
+            initial_stats.skip_http = skip_http
 
             freshness = self._change_detector.check_feed_freshness(feed_type, prepared.parsed)
             if freshness is not None:
@@ -287,11 +346,19 @@ class CheckOrchestrator:
             registry = IssueRegistry(uow.errors)
             registry_result = await registry.update(feed_type, issues)
 
+        self._raise_if_aborted()
+
         duration = time.perf_counter() - timer
         finished_at = utc_now()
         status = CheckStatus.FAILED if prepared.failed else CheckStatus.SUCCESS
         critical_count = sum(1 for issue in issues if issue.severity.value == "critical")
         warning_count = sum(1 for issue in issues if issue.severity.value == "warning")
+        final_stats_json = None
+        if self._stats_tracker is not None:
+            await self._stats_tracker.flush()
+            stats = self._stats_tracker.get_stats(feed_type)
+            if stats is not None:
+                final_stats_json = dump_json(stats.to_dict())
 
         async with UnitOfWork(self._session_factory) as uow:
             updated_check = await uow.checks.update(
@@ -309,6 +376,7 @@ class CheckOrchestrator:
                     critical_count=critical_count,
                     warning_count=warning_count,
                     triggered_by=triggered_by,
+                    stats_json=final_stats_json,
                 )
             )
             if price_result is not None:

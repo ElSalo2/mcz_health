@@ -30,6 +30,7 @@ class CheckStatus(StrEnum):
     RUNNING = "running"
     SUCCESS = "success"
     FAILED = "failed"
+    INTERRUPTED = "interrupted"
     SKIPPED = "skipped"
 
 

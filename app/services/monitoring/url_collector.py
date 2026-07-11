@@ -16,6 +16,15 @@ def _append_unique(urls: list[str], seen: set[str], value: str | None) -> None:
     urls.append(normalized)
 
 
+def store_page_urls(store: StoreItem) -> list[str]:
+    """Возвращает уникальные URL страниц магазина (url и info-page без дублей)."""
+    urls: list[str] = []
+    for value in (store.url, store.info_page):
+        if value and value not in urls:
+            urls.append(value)
+    return urls
+
+
 def collect_product_http_urls(products: list[ProductItem], settings: Settings) -> list[str]:
     """Собирает URL товаров для HTTP-проверки."""
     urls: list[str] = []
@@ -36,8 +45,8 @@ def collect_store_http_urls(stores: list[StoreItem], settings: Settings) -> list
     seen: set[str] = set()
 
     for store in stores:
-        _append_unique(urls, seen, store.url)
-        _append_unique(urls, seen, store.info_page)
+        for page_url in store_page_urls(store):
+            _append_unique(urls, seen, page_url)
         if settings.check_social_links:
             for link in store.social_links:
                 _append_unique(urls, seen, link)

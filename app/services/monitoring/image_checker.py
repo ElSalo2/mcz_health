@@ -40,8 +40,10 @@ class ImageChecker:
         issues: list[Issue] = []
         check_date = format_datetime_moscow(utc_now())
 
+        image_kind = "product_image" if feed_type == FeedType.PRODUCT else "store_image"
+
         for index, url in enumerate(urls, start=1):
-            response = await self._resource_checker.check_url(url)
+            response = await self._resource_checker.check_url(url, kind=image_kind)
             image_issues = self._validate_response(
                 response=response,
                 object_id=object_id,

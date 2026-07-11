@@ -57,6 +57,7 @@ class FeedCheckModel(Base):
     critical_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     warning_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     triggered_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    stats_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_feed_checks_started_at", "started_at"),)
 

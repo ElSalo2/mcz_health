@@ -9,6 +9,14 @@ from app.core.exceptions import DatabaseError
 from app.domain.entities.feed_check import FeedCheck
 from app.domain.enums import CheckStatus, FeedType
 from app.infrastructure.database.models import FeedCheckModel
+from app.infrastructure.database.utils import dump_json
+
+COMPLETED_STATUSES = (
+    CheckStatus.SUCCESS,
+    CheckStatus.FAILED,
+    CheckStatus.INTERRUPTED,
+    CheckStatus.SKIPPED,
+)
 
 
 class CheckRepository:
@@ -32,6 +40,7 @@ class CheckRepository:
             critical_count=feed_check.critical_count,
             warning_count=feed_check.warning_count,
             triggered_by=feed_check.triggered_by,
+            stats_json=feed_check.stats_json,
         )
         self._session.add(model)
         await self._session.flush()
@@ -60,10 +69,38 @@ class CheckRepository:
         model.critical_count = feed_check.critical_count
         model.warning_count = feed_check.warning_count
         model.triggered_by = feed_check.triggered_by
+        if feed_check.stats_json is not None:
+            model.stats_json = feed_check.stats_json
 
         await self._session.flush()
         await self._session.refresh(model)
         return self._to_entity(model)
+
+    async def update_stats(self, check_id: int, stats: dict) -> None:
+        """Обновляет только статистику проверки (для прогресса выполняющейся проверки)."""
+        result = await self._session.execute(
+            select(FeedCheckModel).where(FeedCheckModel.id == check_id)
+        )
+        model = result.scalar_one_or_none()
+        if model is None:
+            raise DatabaseError("Проверка не найдена", details={"id": check_id})
+        model.stats_json = dump_json(stats)
+        await self._session.flush()
+
+    async def get_last_completed(self, feed_type: FeedType) -> FeedCheck | None:
+        """Возвращает последнюю завершённую проверку."""
+        completed = [status.value for status in COMPLETED_STATUSES]
+        result = await self._session.execute(
+            select(FeedCheckModel)
+            .where(
+                FeedCheckModel.feed_type == feed_type.value,
+                FeedCheckModel.status.in_(completed),
+            )
+            .order_by(desc(FeedCheckModel.finished_at), desc(FeedCheckModel.started_at))
+            .limit(1)
+        )
+        model = result.scalar_one_or_none()
+        return self._to_entity(model) if model else None
 
     async def get_by_id(self, check_id: int) -> FeedCheck | None:
         """Возвращает проверку по ID."""
@@ -87,15 +124,22 @@ class CheckRepository:
         model = result.scalar_one_or_none()
         return self._to_entity(model) if model else None
 
-    async def list_running(self) -> list[FeedCheck]:
+    async def list_running(self, feed_type: FeedType | None = None) -> list[FeedCheck]:
         """Возвращает незавершённые проверки."""
-        result = await self._session.execute(
-            select(FeedCheckModel).where(FeedCheckModel.status == CheckStatus.RUNNING.value)
-        )
+        query = select(FeedCheckModel).where(FeedCheckModel.status == CheckStatus.RUNNING.value)
+        if feed_type is not None:
+            query = query.where(FeedCheckModel.feed_type == feed_type.value)
+        query = query.order_by(desc(FeedCheckModel.started_at), desc(FeedCheckModel.id))
+        result = await self._session.execute(query)
         return [self._to_entity(model) for model in result.scalars().all()]
 
     async def get_last(self, feed_type: FeedType | None = None) -> FeedCheck | None:
-        """Возвращает последнюю проверку."""
+        """Возвращает последнюю проверку (с приоритетом активной)."""
+        if feed_type is not None:
+            running = await self.list_running(feed_type)
+            if running:
+                return running[0]
+
         query = select(FeedCheckModel).order_by(
             desc(FeedCheckModel.started_at),
             desc(FeedCheckModel.id),
@@ -141,4 +185,5 @@ class CheckRepository:
             critical_count=model.critical_count,
             warning_count=model.warning_count,
             triggered_by=model.triggered_by,
+            stats_json=model.stats_json,
         )

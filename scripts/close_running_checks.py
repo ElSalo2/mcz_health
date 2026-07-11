@@ -28,7 +28,7 @@ async def main() -> None:
                 FeedCheck(
                     id=check.id,
                     feed_type=check.feed_type,
-                    status=CheckStatus.FAILED,
+                    status=CheckStatus.INTERRUPTED,
                     started_at=check.started_at,
                     finished_at=finished_at,
                     duration_seconds=duration,

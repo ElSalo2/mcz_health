@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import signal
+import sys
 from contextlib import suppress
 
 from aiogram import Dispatcher
@@ -15,6 +16,7 @@ from app.bot.dispatcher import create_dispatcher
 from app.core.config import load_settings
 from app.core.container import create_container, shutdown_container
 from app.core.logging import setup_logging
+from app.core.single_instance import DEFAULT_API_PORT, is_port_available
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +42,14 @@ async def run_bot_polling(dispatcher: Dispatcher, bot, stop_event: asyncio.Event
 
 async def main() -> None:
     """Запускает все компоненты приложения."""
+    if not is_port_available("0.0.0.0", DEFAULT_API_PORT):
+        print(
+            f"Ошибка: порт {DEFAULT_API_PORT} уже занят. "
+            "Другой экземпляр Catalog Monitor уже запущен.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     settings = load_settings()
     setup_logging(settings.log_level, settings.logs_dir)
 
@@ -67,7 +77,7 @@ async def main() -> None:
             loop.add_signal_handler(sig, _signal_handler)
 
     api = create_api()
-    server = Server(Config(app=api, host="0.0.0.0", port=8000, log_level="warning"))
+    server = Server(Config(app=api, host="0.0.0.0", port=DEFAULT_API_PORT, log_level="warning"))
 
     polling_task = asyncio.create_task(run_bot_polling(dispatcher, container.bot, stop_event))
     server_task = asyncio.create_task(server.serve())

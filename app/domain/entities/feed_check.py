@@ -23,3 +23,4 @@ class FeedCheck:
     critical_count: int
     warning_count: int
     triggered_by: str | None = None
+    stats_json: str | None = None

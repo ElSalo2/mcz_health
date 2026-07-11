@@ -1,6 +1,7 @@
 """Тесты change detector и issue registry."""
 
 from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -12,6 +13,7 @@ from app.infrastructure.database.unit_of_work import UnitOfWork
 from app.infrastructure.xml.parser import ParsedFeed
 from app.services.monitoring.change_detector import ChangeDetector
 from app.services.monitoring.issue_registry import IssueRegistry
+from app.services.monitoring.orchestrator import CheckOrchestrator
 from lxml import etree
 
 
@@ -134,3 +136,51 @@ async def test_issue_registry_open_and_resolve(session_factory) -> None:
         registry = IssueRegistry(uow.errors)
         resolved = await registry.update(FeedType.PRODUCT, [])
         assert len(resolved.resolved_issues) == 1
+
+
+@pytest.mark.asyncio
+async def test_fail_incomplete_checks_closes_running(session_factory, settings: Settings) -> None:
+    orchestrator = CheckOrchestrator(
+        settings,
+        session_factory,
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+        MagicMock(),
+    )
+    started_at = datetime.now(UTC)
+    async with UnitOfWork(session_factory) as uow:
+        await uow.checks.create(
+            FeedCheck(
+                id=None,
+                feed_type=FeedType.PRODUCT,
+                status=CheckStatus.RUNNING,
+                started_at=started_at,
+                finished_at=None,
+                duration_seconds=None,
+                item_count=None,
+                sha256=None,
+                content_size=None,
+                feed_date=None,
+                critical_count=0,
+                warning_count=0,
+                triggered_by="test",
+            )
+        )
+
+    await orchestrator.fail_incomplete_checks()
+
+    async with UnitOfWork(session_factory) as uow:
+        running = await uow.checks.list_running()
+        assert running == []
+        last = await uow.checks.get_last(FeedType.PRODUCT)
+        assert last is not None
+        assert last.status == CheckStatus.INTERRUPTED
+        assert last.finished_at is not None

@@ -19,6 +19,7 @@ from app.services.monitoring.alert_context import format_duplicate_values
 from app.services.monitoring.change_detector import ChangeDetector
 from app.services.monitoring.image_checker import ImageChecker
 from app.services.monitoring.issue_registry import IssueRegistry
+from app.services.monitoring.url_collector import store_page_urls
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +67,8 @@ class StoreValidator:
             if skip_http:
                 continue
 
-            for url in self._page_urls(store):
-                response = await self._resource_checker.check_url(url)
+            for url in store_page_urls(store):
+                response = await self._resource_checker.check_url(url, kind="store_page")
                 if response.status_code is None or response.status_code >= 400:
                     status = (
                         str(response.status_code)
@@ -111,7 +112,7 @@ class StoreValidator:
 
             if self._settings.check_social_links:
                 for link in store.social_links:
-                    response = await self._resource_checker.check_url(link)
+                    response = await self._resource_checker.check_url(link, kind="store_page")
                     if response.status_code is None or response.status_code >= 400:
                         status = (
                             str(response.status_code)
@@ -143,13 +144,6 @@ class StoreValidator:
                         )
 
         return issues
-
-    def _page_urls(self, store: StoreItem) -> list[str]:
-        urls: list[str] = []
-        for value in (store.url, store.info_page):
-            if value and value not in urls:
-                urls.append(value)
-        return urls
 
     def _check_required_fields(self, store: StoreItem) -> list[Issue]:
         issues: list[Issue] = []

@@ -1,5 +1,6 @@
 """Тесты сбора URL для HTTP-проверки."""
 
+from dataclasses import replace
 from datetime import UTC, datetime
 
 import pytest
@@ -10,6 +11,7 @@ from app.services.monitoring.url_collector import (
     collect_all_http_urls,
     collect_product_http_urls,
     collect_store_http_urls,
+    store_page_urls,
 )
 
 
@@ -107,6 +109,31 @@ def test_collect_product_urls_full_mode(
         "https://mczgold.ru/product/1",
         "https://cdn.example/img1.jpg",
         "https://cdn.example/img2.jpg",
+    ]
+
+
+def test_store_page_urls_deduplicates_same_url(sample_store: StoreItem) -> None:
+    store = replace(
+        sample_store,
+        url="https://mczgold.ru",
+        info_page="https://mczgold.ru",
+    )
+    assert store_page_urls(store) == ["https://mczgold.ru"]
+
+
+def test_collect_store_urls_deduplicates_same_page_urls(
+    settings: Settings,
+    sample_store: StoreItem,
+) -> None:
+    store = replace(
+        sample_store,
+        url="https://mczgold.ru",
+        info_page="https://mczgold.ru",
+    )
+    urls = collect_store_http_urls([store], settings)
+    assert urls == [
+        "https://mczgold.ru",
+        "https://cdn.example/store1.jpg",
     ]
 
 

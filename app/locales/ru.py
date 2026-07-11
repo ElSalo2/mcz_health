@@ -81,8 +81,8 @@ class Messages:
         "• Сначала проверяется фид магазинов, затем — товаров.\n\n"
         "Алерты в Telegram (всем авторизованным пользователям):\n"
         "• HTTP 4xx или 5xx — страница товара/магазина, изображение, XML-фид;\n"
-        "• отсутствует фото в фиде — нет <picture> у товара или <photo> у магазина;\n"
-        "• отсутствует категория — нет <categoryId> у товара;\n"
+        "• отсутствует фото в фиде — нет &lt;picture&gt; у товара или &lt;photo&gt; у магазина;\n"
+        "• отсутствует категория — нет &lt;categoryId&gt; у товара;\n"
         "• некорректный parentId — родитель категории отсутствует или ссылается на себя.\n\n"
         "Без алертов (только в отчётах «Последняя проверка» / «История»):\n"
         "• прочие пустые поля, устаревшие данные, резкое изменение количества;\n"
@@ -105,8 +105,26 @@ class Messages:
     CHECK_SUMMARY_RUNNING = (
         "🗂 {feed_name}\n"
         "⏳ Проверка ещё выполняется\n"
-        "Запущена: {started_at}"
+        "Запущена: {started_at}\n"
+        "Прошло: {elapsed}"
     )
+    CHECK_PREVIOUS_HEADER = "📎 Предыдущая проверка:"
+    CHECK_STATS_HEADER = "Что проверяем:"
+    CHECK_STATS_ITEMS = "• товаров в фиде: {count}"
+    CHECK_STATS_STORES = "• магазинов в фиде: {count}"
+    CHECK_STATS_CATEGORIES = "• категорий в дереве: {count}"
+    CHECK_STATS_PRODUCT_PAGES = "• URL страниц товаров: {progress}, HTTP 200: {ok}"
+    CHECK_STATS_PRODUCT_IMAGES = "• URL изображений товаров: {progress}, HTTP 200: {ok}"
+    CHECK_STATS_STORE_PAGES = "• URL страниц магазинов: {progress}, HTTP 200: {ok}"
+    CHECK_STATS_STORE_IMAGES = "• URL фото магазинов: {progress}, HTTP 200: {ok}"
+    CHECK_STATS_HTTP_TOTAL = "• всего HTTP-запросов: {progress}, HTTP 200: {ok}"
+    CHECK_STATS_HTTP_SKIPPED = "• HTTP-проверки пропущены (фид не изменился)"
+    CHECK_STATS_PRICES = "• цен товаров: {count}"
+    CHECK_STATS_STOCKS = "• остатков товаров: {count}"
+    CHECK_STATS_NAMES = "• названий товаров: {count}"
+    CHECK_STATS_FEED_DATE = "• фид сформирован: {feed_date}"
+    CHECK_STATS_STARTED_AT = "• начало проверки: {started_at}"
+    CHECK_STATS_PLANNED_FINISH = "• плановое окончание: {planned_finish}"
     CHECK_SUMMARY_ITEM = (
         "🗂 {feed_name}\n"
         "Статус: {status}\n"
@@ -134,6 +152,8 @@ class Messages:
         "   {started_at} → {finished_at} ({duration})"
     )
     PROBLEMS_NONE = "проблем не обнаружено"
+    PROBLEMS_INTERRUPTED = "проверка прервана до завершения (перезапуск сервиса)"
+    PROBLEMS_IN_PROGRESS = "результат будет после завершения проверки"
     PROBLEMS_FOUND = "критических — {critical}, предупреждений — {warnings}"
 
     # --- Администрирование ---

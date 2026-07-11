@@ -81,6 +81,8 @@ async def _apply_sqlite_migrations(conn) -> None:
     columns = {row[1] for row in result.fetchall()}
     if "content_size" not in columns:
         await conn.execute(text("ALTER TABLE feed_checks ADD COLUMN content_size INTEGER"))
+    if "stats_json" not in columns:
+        await conn.execute(text("ALTER TABLE feed_checks ADD COLUMN stats_json TEXT"))
 
 
 async def verify_database_connection(engine: AsyncEngine) -> None:

@@ -12,3 +12,4 @@ router = Router(name="menu")
 async def about_system(message: Message) -> None:
     """Показывает информацию о системе."""
     await message.answer(Messages.ABOUT_SYSTEM)
+

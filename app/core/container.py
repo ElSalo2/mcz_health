@@ -80,6 +80,9 @@ async def create_container(config: Settings) -> AppContainer:
         notification_service,
     )
 
+    if check_orchestrator is not None:
+        await check_orchestrator.fail_incomplete_checks()
+
     return AppContainer(
         config=config,
         session_factory=database_manager.session_factory,
@@ -100,6 +103,9 @@ async def shutdown_container(container: AppContainer) -> None:
     """Корректно останавливает компоненты приложения."""
     if container.continuous_monitoring is not None:
         await container.continuous_monitoring.stop()
+
+    if container.check_orchestrator is not None:
+        await container.check_orchestrator.fail_incomplete_checks()
 
     if container.scheduler is not None:
         container.scheduler.shutdown(wait=False)

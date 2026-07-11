@@ -6,6 +6,7 @@ from app.bot.formatters.check_formatter import (
     format_check_cycle_completed,
     format_datetime_moscow,
     format_duration,
+    format_feed_check_summary,
     format_feed_date,
     format_history_report,
     format_last_check_report,
@@ -104,6 +105,28 @@ def test_format_history_report_running() -> None:
     report = format_history_report([running])
     assert "Сейчас выполняется" in report
     assert "Крит.:" not in report
+
+
+def test_format_feed_check_summary_interrupted() -> None:
+    now = datetime(2026, 7, 10, 12, 15, tzinfo=UTC)
+    interrupted = FeedCheck(
+        id=2,
+        feed_type=FeedType.PRODUCT,
+        status=CheckStatus.INTERRUPTED,
+        started_at=now,
+        finished_at=now,
+        duration_seconds=21.0,
+        item_count=None,
+        sha256=None,
+        content_size=None,
+        feed_date=now,
+        critical_count=0,
+        warning_count=0,
+        triggered_by="background",
+    )
+    report = format_feed_check_summary(interrupted)
+    assert "прервана" in report
+    assert "проверка прервана до завершения" in report
 
 
 def test_format_check_cycle_completed() -> None:

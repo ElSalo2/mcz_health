@@ -63,6 +63,7 @@ async def build_monitoring_stack(
         stock_validator=stock_validator,
         change_detector=change_detector,
         feed_extractor=feed_extractor,
+        resource_checker=resource_checker,
         throttle_planner=throttle_planner,
         notification_service=notification_service,
     )

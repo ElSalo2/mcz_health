@@ -63,7 +63,7 @@ class ProductValidator:
                 continue
 
             if product.url:
-                response = await self._resource_checker.check_url(product.url)
+                response = await self._resource_checker.check_url(product.url, kind="product_page")
                 if response.status_code is None or response.status_code >= 400:
                     status = (
                         str(response.status_code)
