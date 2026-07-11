@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 
 from app.bot.keyboards.builders import (
@@ -13,6 +16,8 @@ from app.bot.keyboards.builders import (
 )
 from app.core.config import Settings
 from app.locales.ru import Messages
+
+logger = logging.getLogger(__name__)
 
 
 def access_denied_text(config: Settings) -> str:
@@ -25,6 +30,25 @@ def user_blocked_text(config: Settings) -> str:
 
 def access_revoked_text(config: Settings) -> str:
     return Messages.AUTH_ACCESS_REVOKED.format(admin_contact=config.admin_contact_html)
+
+
+async def send_admin_contact_card(bot: Bot, chat_id: int, config: Settings) -> bool:
+    """Отправляет карточку контакта администратора (ваш профиль, не заявителя)."""
+    phone = config.admin_contact_phone_normalized
+    if phone is None:
+        return False
+
+    try:
+        await bot.send_contact(
+            chat_id=chat_id,
+            phone_number=phone,
+            first_name=config.admin_contact_first_name,
+            last_name=config.admin_contact_last_name or "",
+        )
+        return True
+    except TelegramAPIError as exc:
+        logger.warning("Не удалось отправить карточку контакта администратора: %s", exc)
+        return False
 
 
 async def send_access_restricted(
@@ -44,6 +68,7 @@ async def send_access_restricted(
         text = access_denied_text(config)
 
     await bot.send_message(chat_id=chat_id, text=text, reply_markup=hide_reply_keyboard())
+    await send_admin_contact_card(bot, chat_id, config)
     await bot.send_message(
         chat_id=chat_id,
         text=Messages.ACCESS_DENIED_ACTION,

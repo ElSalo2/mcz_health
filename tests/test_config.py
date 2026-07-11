@@ -58,6 +58,7 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.max_check_duration_seconds == 18000
     assert settings.admin_telegram_handle == "@el_salo"
     assert settings.admin_telegram_url == "https://t.me/el_salo"
+    assert settings.admin_contact_phone_normalized is None
     assert settings.log_level == "INFO"
     assert settings.database_url == "sqlite+aiosqlite:///./data/catalog_monitor.db"
 

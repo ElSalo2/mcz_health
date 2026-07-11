@@ -40,6 +40,19 @@ class Settings(BaseSettings):
         min_length=1,
         description="Username администратора в Telegram (без @).",
     )
+    admin_contact_phone: str | None = Field(
+        default=None,
+        description="Телефон администратора для карточки контакта в Telegram (например +79111112233).",
+    )
+    admin_contact_first_name: str = Field(
+        default="Администратор",
+        min_length=1,
+        description="Имя в карточке контакта администратора (ваш профиль, не заявителя).",
+    )
+    admin_contact_last_name: str | None = Field(
+        default=None,
+        description="Фамилия в карточке контакта администратора.",
+    )
 
     # --- Фиды ---
     store_feed_url: HttpUrl = Field(
@@ -192,8 +205,20 @@ class Settings(BaseSettings):
 
     @property
     def admin_contact_html(self) -> str:
-        """Кликабельный контакт администратора для HTML-сообщений."""
-        return f'<a href="{self.admin_telegram_url}">{self.admin_telegram_handle}</a>'
+        """Кликабельный username администратора для HTML-сообщений."""
+        return (
+            f'<a href="{self.admin_telegram_url}">{self.admin_telegram_handle}</a> '
+            f"(администратор)"
+        )
+
+    @property
+    def admin_contact_phone_normalized(self) -> str | None:
+        """Телефон администратора в формате +7... для send_contact."""
+        if not self.admin_contact_phone:
+            return None
+        from app.infrastructure.database.utils import normalize_phone
+
+        return normalize_phone(self.admin_contact_phone)
 
     @property
     def project_root(self) -> Path:
