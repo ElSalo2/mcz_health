@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.infrastructure.database.base import Base
@@ -37,6 +37,21 @@ class AuthorizationLogModel(Base):
     success: Mapped[bool] = mapped_column(Boolean, nullable=False)
     reason: Mapped[str | None] = mapped_column(String(256), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class BotChatMessageModel(Base):
+    """Журнал message_id для очистки чата при отзыве доступа."""
+
+    __tablename__ = "bot_chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    chat_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("chat_id", "message_id", name="uq_bot_chat_messages_chat_message"),
+    )
 
 
 class FeedCheckModel(Base):

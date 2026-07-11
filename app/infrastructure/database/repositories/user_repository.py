@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,6 +129,29 @@ class UserRepository:
             .where(
                 AuthorizationLogModel.telegram_id == telegram_id,
                 AuthorizationLogModel.success.is_(True),
+            )
+            .limit(1)
+        )
+        return result.scalar_one_or_none() is not None
+
+    async def had_recent_access_request(
+        self,
+        telegram_id: int,
+        *,
+        within_seconds: int,
+    ) -> bool:
+        """Проверяет, отправлял ли пользователь заявку на доступ недавно."""
+        if within_seconds <= 0:
+            return False
+
+        cutoff = datetime.now(UTC) - timedelta(seconds=within_seconds)
+        result = await self._session.execute(
+            select(AuthorizationLogModel.id)
+            .where(
+                AuthorizationLogModel.telegram_id == telegram_id,
+                AuthorizationLogModel.success.is_(False),
+                AuthorizationLogModel.reason == "not_in_whitelist",
+                AuthorizationLogModel.created_at >= cutoff,
             )
             .limit(1)
         )

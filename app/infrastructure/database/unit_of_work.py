@@ -6,6 +6,7 @@ from types import TracebackType
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.infrastructure.database.repositories.bot_chat_message_repository import BotChatMessageRepository
 from app.infrastructure.database.repositories.check_repository import CheckRepository
 from app.infrastructure.database.repositories.error_repository import ErrorRepository
 from app.infrastructure.database.repositories.product_price_repository import ProductPriceRepository
@@ -30,6 +31,10 @@ class UnitOfWork:
     @property
     def users(self) -> UserRepository:
         return UserRepository(self.session)
+
+    @property
+    def bot_chat_messages(self) -> BotChatMessageRepository:
+        return BotChatMessageRepository(self.session)
 
     @property
     def checks(self) -> CheckRepository:

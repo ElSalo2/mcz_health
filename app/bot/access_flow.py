@@ -5,15 +5,10 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 
-from app.bot.keyboards.builders import (
-    admin_contact_keyboard,
-    contact_keyboard,
-    hide_reply_keyboard,
-    main_menu_keyboard,
-)
+from app.bot.keyboards.builders import contact_keyboard, hide_reply_keyboard, main_menu_keyboard
+from app.bot.tracking_bot import TrackingBot
 from app.core.config import Settings
 from app.locales.ru import Messages
 
@@ -24,31 +19,17 @@ def access_denied_text() -> str:
     return Messages.AUTH_ACCESS_DENIED
 
 
-def user_blocked_text(config: Settings) -> str:
-    return Messages.AUTH_USER_BLOCKED.format(admin_contact=config.admin_contact_html)
+def user_blocked_text() -> str:
+    return Messages.AUTH_USER_BLOCKED
 
 
-def access_revoked_text(config: Settings) -> str:
-    return Messages.AUTH_ACCESS_REVOKED.format(admin_contact=config.admin_contact_html)
+def access_revoked_text() -> str:
+    return Messages.AUTH_ACCESS_REVOKED
 
 
-async def send_admin_contact_card(bot: Bot, chat_id: int, config: Settings) -> bool:
-    """Отправляет карточку контакта администратора (ваш профиль, не заявителя)."""
-    phone = config.admin_contact_phone_normalized
-    if phone is None:
-        return False
-
-    try:
-        await bot.send_contact(
-            chat_id=chat_id,
-            phone_number=phone,
-            first_name=config.admin_contact_first_name,
-            last_name=config.admin_contact_last_name or "",
-        )
-        return True
-    except TelegramAPIError as exc:
-        logger.warning("Не удалось отправить карточку контакта администратора: %s", exc)
-        return False
+async def _clear_chat_history(bot: Bot, chat_id: int) -> None:
+    if isinstance(bot, TrackingBot):
+        await bot.tracker.clear_chat(bot, chat_id)
 
 
 async def send_access_restricted(
@@ -68,21 +49,9 @@ async def send_access_restricted(
         )
         return
 
-    if revoked:
-        text = access_revoked_text(config)
-    else:
-        text = user_blocked_text(config)
-
+    await _clear_chat_history(bot, chat_id)
+    text = access_revoked_text() if revoked else user_blocked_text()
     await bot.send_message(chat_id=chat_id, text=text, reply_markup=hide_reply_keyboard())
-    await send_admin_contact_card(bot, chat_id, config)
-    await bot.send_message(
-        chat_id=chat_id,
-        text=Messages.ACCESS_DENIED_ACTION,
-        reply_markup=admin_contact_keyboard(
-            config.admin_telegram_url,
-            config.admin_telegram_handle,
-        ),
-    )
 
 
 async def send_auth_request(bot: Bot, chat_id: int) -> None:

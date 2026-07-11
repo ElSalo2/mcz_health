@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from app.infrastructure.http.client import HttpClient
     from app.services.admin_panel_service import AdminPanelService
     from app.services.auth_service import AuthService
+    from app.services.bot_message_tracker import BotMessageTracker
     from app.services.check_query_service import CheckQueryService
     from app.services.continuous_monitoring_service import ContinuousMonitoringService
     from app.services.monitoring.orchestrator import CheckOrchestrator
@@ -32,6 +33,7 @@ class AppContainer:
     session_factory: async_sessionmaker[AsyncSession]
     database_manager: DatabaseManager
     bot: Bot
+    bot_message_tracker: BotMessageTracker
     auth_service: AuthService
     user_service: UserService
     notification_service: NotificationService
@@ -45,7 +47,8 @@ class AppContainer:
 
 async def create_container(config: Settings) -> AppContainer:
     """Создаёт и связывает зависимости приложения."""
-    from app.bot.dispatcher import create_bot
+    from app.services.bot_message_tracker import BotMessageTracker
+    from app.bot.tracking_bot import TrackingBot
     from app.infrastructure.database.manager import DatabaseManager
     from app.services.admin_panel_service import AdminPanelService
     from app.services.auth_service import AuthService
@@ -56,7 +59,8 @@ async def create_container(config: Settings) -> AppContainer:
     database_manager = DatabaseManager(config)
     await database_manager.startup()
 
-    bot = create_bot(config)
+    bot_message_tracker = BotMessageTracker(database_manager.session_factory)
+    bot = TrackingBot(settings=config, tracker=bot_message_tracker)
     notification_service = NotificationService(
         bot,
         config,
@@ -88,6 +92,7 @@ async def create_container(config: Settings) -> AppContainer:
         session_factory=database_manager.session_factory,
         database_manager=database_manager,
         bot=bot,
+        bot_message_tracker=bot_message_tracker,
         auth_service=auth_service,
         user_service=user_service,
         notification_service=notification_service,

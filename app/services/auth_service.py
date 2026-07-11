@@ -31,6 +31,7 @@ class AuthResult:
     access_denied: bool = False
     identity_failed: bool = False
     user_blocked: bool = False
+    access_request_rate_limited: bool = False
 
 
 class AuthService:
@@ -77,6 +78,27 @@ class AuthService:
             user = await uow.users.get_by_phone(normalized_phone)
 
             if user is None:
+                if await uow.users.had_recent_access_request(
+                    telegram_user.id,
+                    within_seconds=self._settings.access_request_cooldown_seconds,
+                ):
+                    logger.info(
+                        "Повторная заявка на доступ в пределах cooldown: telegram_id=%s",
+                        telegram_user.id,
+                    )
+                    await uow.users.log_authorization(
+                        telegram_id=telegram_user.id,
+                        phone=normalized_phone,
+                        success=False,
+                        reason="access_request_rate_limited",
+                    )
+                    return AuthResult(
+                        success=False,
+                        access_denied=True,
+                        access_request_rate_limited=True,
+                        reason="access_request_rate_limited",
+                    )
+
                 logger.info(
                     "Запрос доступа от неавторизованного номера: telegram_id=%s, phone=%s",
                     telegram_user.id,

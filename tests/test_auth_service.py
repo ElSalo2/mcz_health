@@ -126,6 +126,30 @@ async def test_auth_access_denied_not_in_whitelist(
 
 
 @pytest.mark.asyncio
+async def test_auth_access_request_rate_limited(
+    session_factory,
+    auth_settings: Settings,
+) -> None:
+    notification = MockNotificationService()
+    auth_service = AuthService(session_factory, notification, auth_settings)
+
+    contact = FakeContact(phone_number="79009998877", user_id=123456789)  # type: ignore[arg-type]
+    user = FakeTelegramUser(id=123456789)  # type: ignore[arg-type]
+
+    first = await auth_service.authenticate_contact(user, contact)
+    second = await auth_service.authenticate_contact(user, contact)
+
+    assert first.success is False
+    assert first.access_denied is True
+    assert first.access_request_rate_limited is False
+    assert len(notification.admin_messages) == 1
+
+    assert second.success is False
+    assert second.access_request_rate_limited is True
+    assert len(notification.admin_messages) == 1
+
+
+@pytest.mark.asyncio
 async def test_auth_blocked_user(
     session_factory,
     auth_settings: Settings,

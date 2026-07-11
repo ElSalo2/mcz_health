@@ -15,11 +15,7 @@ class Messages:
         "⛔ Заявка на авторизацию отправлена.\n\n"
         "После ее одобрения вы получите сообщение."
     )
-    AUTH_USER_BLOCKED = (
-        "⛔ Ваш доступ к системе заблокирован.\n\n"
-        "Для восстановления доступа напишите администратору в Telegram:\n"
-        "{admin_contact}"
-    )
+    AUTH_USER_BLOCKED = "⛔ Ваш доступ к системе заблокирован."
     AUTH_SUCCESS = "✅ Авторизация выполнена успешно."
     WELCOME = (
         "👋 Добро пожаловать!\n\n"
@@ -58,11 +54,7 @@ class Messages:
         "Теперь вы можете пользоваться ботом."
     )
     AUTH_ACCESS_REJECTED = "В доступе отказано ❌"
-    AUTH_ACCESS_REVOKED = (
-        "⛔ Ваш доступ к системе отозван администратором.\n\n"
-        "Для восстановления доступа напишите администратору в Telegram:\n"
-        "{admin_contact}"
-    )
+    AUTH_ACCESS_REVOKED = "⛔ Ваш доступ к системе отозван администратором."
     ACCESS_REQUEST_HANDLED_APPROVE = "✅ Пользователь добавлен ({phone})"
     ACCESS_REQUEST_HANDLED_REJECT = "❌ Заявка отклонена"
     ACCESS_REQUEST_ALREADY_AUTHORIZED = "Пользователь уже имеет доступ"

@@ -53,6 +53,11 @@ class Settings(BaseSettings):
         default=None,
         description="Фамилия в карточке контакта администратора.",
     )
+    access_request_cooldown_seconds: int = Field(
+        default=86400,
+        ge=0,
+        description="Минимальный интервал между заявками на доступ от одного Telegram ID (секунды).",
+    )
 
     # --- Фиды ---
     store_feed_url: HttpUrl = Field(

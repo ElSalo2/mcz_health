@@ -1,25 +1,15 @@
 """Создание и настройка aiogram Dispatcher."""
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
+from aiogram import Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from app.bot.filters.admin import IsAdminFilter
 from app.bot.handlers import access_request, admin, checks, menu, start
 from app.bot.middlewares.auth import AuthMiddleware
+from app.bot.middlewares.chat_messages import ChatMessageMiddleware
 from app.bot.middlewares.container import ContainerMiddleware
 from app.bot.middlewares.logging import LoggingMiddleware
-from app.core.config import Settings
 from app.core.container import AppContainer
-
-
-def create_bot(settings: Settings) -> Bot:
-    """Создаёт экземпляр Telegram-бота."""
-    return Bot(
-        token=settings.bot_token,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
 
 
 def create_dispatcher(container: AppContainer) -> Dispatcher:
@@ -29,6 +19,7 @@ def create_dispatcher(container: AppContainer) -> Dispatcher:
 
     dispatcher.update.middleware(LoggingMiddleware())
     dispatcher.update.middleware(ContainerMiddleware(container))
+    dispatcher.update.middleware(ChatMessageMiddleware())
 
     dispatcher.include_router(start.router)
 

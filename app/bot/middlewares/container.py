@@ -31,4 +31,5 @@ class ContainerMiddleware(BaseMiddleware):
         data["notification_service"] = self._container.notification_service
         data["check_query_service"] = self._container.check_query_service
         data["admin_panel_service"] = self._container.admin_panel_service
+        data["bot_message_tracker"] = self._container.bot_message_tracker
         return await handler(event, data)
