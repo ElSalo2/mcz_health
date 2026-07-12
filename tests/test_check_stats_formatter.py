@@ -118,14 +118,14 @@ def test_estimate_planned_finish_uses_remaining_from_now() -> None:
 def test_estimate_planned_finish_ignores_max_duration_fallback() -> None:
     started = datetime(2026, 7, 12, 9, 0, tzinfo=UTC)
     stats = CheckStats(
-        http_total_planned=11000,
+        http_total_planned=46913,
         http_total_checked=0,
-        http_slot_seconds=1.0,
-        planned_duration_seconds=0.0,
+        http_slot_seconds=0.906,
+        planned_duration_seconds=43100.0,
         max_duration_seconds=43200,
     )
 
     finish = estimate_planned_finish_at(started_at=started, stats=stats)
 
-    assert finish == started + timedelta(seconds=11000)
+    assert finish == started + timedelta(seconds=43100.0)
     assert finish != started + timedelta(seconds=43200)

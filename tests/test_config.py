@@ -38,7 +38,7 @@ def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.admin_id == 987654321
     assert settings.check_mode == "FAST"
     assert settings.check_product_images is True
-    assert settings.should_check_images("product") is False
+    assert settings.should_check_images("product") is True
     assert settings.check_social_links is False
     assert settings.local_check_reserve_seconds == 600
     assert settings.http_check_budget_seconds == 17400.0
@@ -128,6 +128,7 @@ def test_get_feed_url_helpers(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "yandex_outlets_mcz.xml" in settings.get_feed_url("store")
     assert settings.get_feed_age_limit_minutes("product") == 180
     assert settings.get_count_change_limit_percent("store") == 20
+    assert settings.should_check_images("product") is True
 
 
 def test_resolved_database_url(monkeypatch: pytest.MonkeyPatch) -> None:

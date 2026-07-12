@@ -304,8 +304,6 @@ class Settings(BaseSettings):
 
     def should_check_images(self, feed_type: str) -> bool:
         """Определяет, нужно ли проверять изображения для данного типа фида."""
-        if not self.is_full_mode:
-            return False
         if feed_type == "product":
             return self.check_product_images
         if feed_type == "store":
