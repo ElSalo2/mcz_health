@@ -6,6 +6,7 @@ import logging
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
+from aiogram.filters.command import Command
 from aiogram.types import Message
 
 from app.bot.access_flow import reply_access_denied
@@ -44,6 +45,24 @@ async def cmd_start(
     await message.answer(
         Messages.AUTH_REQUEST_CONTACT,
         reply_markup=contact_keyboard(),
+    )
+
+
+@router.message(Command("menu"))
+async def cmd_menu(message: Message, user_service: UserService) -> None:
+    """Восстанавливает главное меню по команде."""
+    if message.from_user is None:
+        return
+
+    telegram_id = message.from_user.id
+    if not await user_service.is_authorized(telegram_id):
+        await message.answer(Messages.AUTH_REQUEST_CONTACT, reply_markup=contact_keyboard())
+        return
+
+    is_admin = await user_service.is_admin(telegram_id)
+    await message.answer(
+        Messages.WELCOME,
+        reply_markup=main_menu_keyboard(is_admin=is_admin),
     )
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import Message
 
 from app.bot.keyboards.builders import contact_keyboard, hide_reply_keyboard, main_menu_keyboard
@@ -13,6 +14,8 @@ from app.core.config import Settings
 from app.locales.ru import Messages
 
 logger = logging.getLogger(__name__)
+
+_MENU_RESTORE_PLACEHOLDER = "\u200b"
 
 
 def access_denied_text() -> str:
@@ -70,6 +73,30 @@ async def send_main_menu(bot: Bot, chat_id: int, *, is_admin: bool) -> None:
         text=Messages.WELCOME,
         reply_markup=main_menu_keyboard(is_admin=is_admin),
     )
+
+
+async def restore_main_menu_silent(bot: Bot, chat_id: int, *, is_admin: bool) -> None:
+    """Обновляет reply-меню без лишнего сообщения в истории чата."""
+    try:
+        message = await bot.send_message(
+            chat_id=chat_id,
+            text=_MENU_RESTORE_PLACEHOLDER,
+            reply_markup=main_menu_keyboard(is_admin=is_admin),
+            disable_notification=True,
+        )
+    except TelegramAPIError as exc:
+        logger.debug("Не удалось обновить меню в чате %s: %s", chat_id, exc)
+        return
+
+    try:
+        await bot.delete_message(chat_id, message.message_id)
+    except TelegramAPIError as exc:
+        logger.debug(
+            "Не удалось удалить служебное сообщение меню %s в чате %s: %s",
+            message.message_id,
+            chat_id,
+            exc,
+        )
 
 
 async def reply_access_denied(message: Message, config: Settings, *, blocked: bool) -> None:

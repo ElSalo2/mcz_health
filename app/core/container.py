@@ -60,7 +60,11 @@ async def create_container(config: Settings) -> AppContainer:
     await database_manager.startup()
 
     bot_message_tracker = BotMessageTracker(database_manager.session_factory)
-    bot = TrackingBot(settings=config, tracker=bot_message_tracker)
+    bot = TrackingBot(
+        settings=config,
+        tracker=bot_message_tracker,
+        session_factory=database_manager.session_factory,
+    )
     notification_service = NotificationService(
         bot,
         config,

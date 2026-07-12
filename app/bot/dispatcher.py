@@ -9,6 +9,7 @@ from app.bot.middlewares.auth import AuthMiddleware
 from app.bot.middlewares.chat_messages import ChatMessageMiddleware
 from app.bot.middlewares.container import ContainerMiddleware
 from app.bot.middlewares.logging import LoggingMiddleware
+from app.bot.middlewares.main_menu import MainMenuCallbackMiddleware
 from app.core.container import AppContainer
 
 
@@ -20,6 +21,7 @@ def create_dispatcher(container: AppContainer) -> Dispatcher:
     dispatcher.update.middleware(LoggingMiddleware())
     dispatcher.update.middleware(ContainerMiddleware(container))
     dispatcher.update.middleware(ChatMessageMiddleware())
+    dispatcher.callback_query.middleware(MainMenuCallbackMiddleware())
 
     dispatcher.include_router(start.router)
 
