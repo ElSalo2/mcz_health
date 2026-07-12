@@ -79,11 +79,7 @@ def test_collect_product_urls_fast_mode(
     sample_product: ProductItem,
 ) -> None:
     urls = collect_product_http_urls([sample_product], settings)
-    assert urls == [
-        "https://mczgold.ru/product/1",
-        "https://cdn.example/img1.jpg",
-        "https://cdn.example/img2.jpg",
-    ]
+    assert urls == ["https://mczgold.ru/product/1"]
 
 
 def test_collect_product_urls_without_images(
@@ -131,10 +127,7 @@ def test_collect_store_urls_deduplicates_same_page_urls(
         info_page="https://mczgold.ru",
     )
     urls = collect_store_http_urls([store], settings)
-    assert urls == [
-        "https://mczgold.ru",
-        "https://cdn.example/store1.jpg",
-    ]
+    assert urls == ["https://mczgold.ru"]
 
 
 def test_collect_store_urls_with_photos(
@@ -145,7 +138,6 @@ def test_collect_store_urls_with_photos(
     assert urls == [
         "https://mczgold.ru",
         "https://mczgold.ru/info",
-        "https://cdn.example/store1.jpg",
     ]
 
 

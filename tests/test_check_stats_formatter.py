@@ -1,11 +1,16 @@
 """Тесты детальной статистики проверок."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
-from app.bot.formatters.check_formatter import format_check_stats_block, format_last_check_report
+from app.bot.formatters.check_formatter import (
+    estimate_planned_finish_at,
+    format_check_stats_block,
+    format_last_check_report,
+)
 from app.domain.entities.feed_check import FeedCheck
 from app.domain.enums import CheckStatus, FeedType
+from app.domain.value_objects.check_stats import CheckStats
 from app.domain.value_objects.feed_check_view import FeedCheckView
 from app.infrastructure.database.utils import dump_json
 
@@ -92,3 +97,35 @@ def test_format_last_check_report_shows_previous_while_running() -> None:
     assert "Проверка ещё выполняется" in report
     assert "Предыдущая проверка" in report
     assert "завершена успешно" in report
+
+
+def test_estimate_planned_finish_uses_remaining_from_now() -> None:
+    started = datetime(2026, 7, 12, 9, 0, tzinfo=UTC)
+    now = datetime(2026, 7, 12, 10, 0, tzinfo=UTC)
+    stats = CheckStats(
+        http_total_planned=46913,
+        http_total_checked=2854,
+        http_slot_seconds=0.906,
+        planned_duration_seconds=43100.0,
+        max_duration_seconds=43200,
+    )
+
+    finish = estimate_planned_finish_at(started_at=started, stats=stats, now=now)
+
+    assert finish == now + timedelta(seconds=(46913 - 2854) * 0.906)
+
+
+def test_estimate_planned_finish_ignores_max_duration_fallback() -> None:
+    started = datetime(2026, 7, 12, 9, 0, tzinfo=UTC)
+    stats = CheckStats(
+        http_total_planned=11000,
+        http_total_checked=0,
+        http_slot_seconds=1.0,
+        planned_duration_seconds=0.0,
+        max_duration_seconds=43200,
+    )
+
+    finish = estimate_planned_finish_at(started_at=started, stats=stats)
+
+    assert finish == started + timedelta(seconds=11000)
+    assert finish != started + timedelta(seconds=43200)

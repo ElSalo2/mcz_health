@@ -103,18 +103,22 @@ def estimate_planned_finish_at(
     if started.tzinfo is None:
         started = started.replace(tzinfo=UTC)
 
+    if stats.http_slot_seconds <= 0 or stats.http_total_planned <= 0:
+        return None
+
     remaining_http = max(0, stats.http_total_planned - stats.http_total_checked)
-    if stats.http_slot_seconds > 0 and stats.http_total_checked > 0 and remaining_http > 0:
+    if stats.http_total_checked > 0 and remaining_http > 0:
         reference = now if now is not None else utc_now()
         return reference + timedelta(seconds=remaining_http * stats.http_slot_seconds)
 
-    if stats.planned_duration_seconds > 0:
-        return started + timedelta(seconds=stats.planned_duration_seconds)
+    duration_seconds = stats.planned_duration_seconds
+    if duration_seconds <= 0:
+        duration_seconds = stats.http_total_planned * stats.http_slot_seconds
 
-    if stats.max_duration_seconds > 0:
-        return started + timedelta(seconds=stats.max_duration_seconds)
+    if duration_seconds <= 0:
+        return None
 
-    return None
+    return started + timedelta(seconds=duration_seconds)
 
 
 def _format_running_timing_lines(check: FeedCheck, stats: CheckStats) -> list[str]:
