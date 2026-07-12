@@ -9,7 +9,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from app.bot.access_flow import reply_access_denied
-from app.bot.keyboards.builders import contact_keyboard, main_menu_keyboard
+from app.bot.keyboards.builders import contact_keyboard, hide_reply_keyboard, main_menu_keyboard
 from app.core.config import Settings
 from app.core.exceptions import AppError
 from app.locales.ru import Messages
@@ -70,7 +70,13 @@ async def handle_contact(
         return
 
     if result.access_denied:
-        await reply_access_denied(message, config, blocked=result.user_blocked)
+        if result.access_request_rate_limited:
+            await message.answer(
+                Messages.AUTH_ACCESS_REQUEST_ALREADY_SENT,
+                reply_markup=hide_reply_keyboard(),
+            )
+        else:
+            await reply_access_denied(message, config, blocked=result.user_blocked)
         return
 
     if result.success:

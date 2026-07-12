@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
 from app.core.error_handler import handle_service_errors
+from app.core.exceptions import NotificationError
 from app.domain.entities.user import User
 from app.domain.enums import UserStatus
 from app.infrastructure.database.unit_of_work import UnitOfWork
@@ -32,6 +33,7 @@ class AuthResult:
     identity_failed: bool = False
     user_blocked: bool = False
     access_request_rate_limited: bool = False
+    admin_notify_failed: bool = False
 
 
 class AuthService:
@@ -70,6 +72,9 @@ class AuthService:
         except ValueError:
             await self._log_attempt(telegram_user.id, phone, success=False, reason="invalid_phone")
             return AuthResult(success=False, identity_failed=True, reason="invalid_phone")
+
+        pending_admin_notify: tuple[TelegramUser, str] | None = None
+        result: AuthResult | None = None
 
         async with UnitOfWork(self._session_factory) as uow:
             if telegram_user.id == self._settings.admin_id:
@@ -110,10 +115,9 @@ class AuthService:
                     success=False,
                     reason="not_in_whitelist",
                 )
-                await self._notify_admin_access_request(telegram_user, normalized_phone)
-                return AuthResult(success=False, access_denied=True, reason="not_in_whitelist")
-
-            if user.status == UserStatus.BLOCKED:
+                pending_admin_notify = (telegram_user, normalized_phone)
+                result = AuthResult(success=False, access_denied=True, reason="not_in_whitelist")
+            elif user.status == UserStatus.BLOCKED:
                 logger.info(
                     "Попытка входа заблокированного пользователя: telegram_id=%s, phone=%s",
                     telegram_user.id,
@@ -126,19 +130,26 @@ class AuthService:
                     reason="user_blocked",
                 )
                 return AuthResult(success=False, access_denied=True, user_blocked=True, reason="user_blocked")
+            else:
+                user.telegram_id = telegram_user.id
+                user.first_name = telegram_user.first_name
+                user.last_name = telegram_user.last_name
+                user.username = telegram_user.username
+                updated_user = await uow.users.update(user)
 
-            user.telegram_id = telegram_user.id
-            user.first_name = telegram_user.first_name
-            user.last_name = telegram_user.last_name
-            user.username = telegram_user.username
-            updated_user = await uow.users.update(user)
+                await uow.users.log_authorization(
+                    telegram_id=telegram_user.id,
+                    phone=normalized_phone,
+                    success=True,
+                    reason=None,
+                )
 
-            await uow.users.log_authorization(
-                telegram_id=telegram_user.id,
-                phone=normalized_phone,
-                success=True,
-                reason=None,
-            )
+        if result is not None:
+            if pending_admin_notify is not None:
+                admin_notified = await self._send_admin_access_request(*pending_admin_notify)
+                if not admin_notified:
+                    result.admin_notify_failed = True
+            return result
 
         logger.info("Успешная авторизация: telegram_id=%s, phone=%s", telegram_user.id, normalized_phone)
         return AuthResult(success=True, user=updated_user)
@@ -206,6 +217,19 @@ class AuthService:
                 reason=reason,
             )
 
+    async def _send_admin_access_request(self, telegram_user: TelegramUser, phone: str) -> bool:
+        """Отправляет администратору заявку после сохранения в БД."""
+        try:
+            await self._notify_admin_access_request(telegram_user, phone)
+        except NotificationError as exc:
+            logger.error(
+                "Заявка сохранена, но уведомление администратору не отправлено: %s",
+                exc.message,
+                extra={"details": exc.details},
+            )
+            return False
+        return True
+
     async def _notify_admin_access_request(self, telegram_user: TelegramUser, phone: str) -> None:
         username = (
             f"@{telegram_user.username}"
@@ -217,6 +241,7 @@ class AuthService:
             last_name=telegram_user.last_name or "—",
             username=username,
             telegram_id=telegram_user.id,
+            phone=phone,
         )
         keyboard = access_request_keyboard(telegram_user.id, phone)
         await self._notification_service.notify_admin(text, reply_markup=keyboard)

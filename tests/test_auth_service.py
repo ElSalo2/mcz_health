@@ -37,11 +37,15 @@ class MockNotificationService:
         self.admin_messages: list[str] = []
         self.admin_keyboards: int = 0
         self.user_messages: list[tuple[int, str]] = []
+        self.fail_admin_notify = False
 
     async def notify_admin(self, text: str, reply_markup=None) -> None:
         self.admin_messages.append(text)
         if reply_markup is not None:
             self.admin_keyboards += 1
+        if self.fail_admin_notify:
+            from app.core.exceptions import NotificationError
+            raise NotificationError("test failure")
 
     async def notify_user(self, telegram_id: int, text: str) -> None:
         self.user_messages.append((telegram_id, text))
@@ -123,6 +127,28 @@ async def test_auth_access_denied_not_in_whitelist(
     assert len(notification.admin_messages) == 1
     assert "Новая заявка на авторизацию" in notification.admin_messages[0]
     assert notification.admin_keyboards == 1
+
+
+@pytest.mark.asyncio
+async def test_auth_access_request_log_persisted_when_admin_notify_fails(
+    session_factory,
+    auth_settings: Settings,
+) -> None:
+    notification = MockNotificationService()
+    notification.fail_admin_notify = True
+    auth_service = AuthService(session_factory, notification, auth_settings)
+
+    result = await auth_service.authenticate_contact(
+        FakeTelegramUser(id=123456789),  # type: ignore[arg-type]
+        FakeContact(phone_number="79009998877", user_id=123456789),  # type: ignore[arg-type]
+    )
+
+    assert result.success is False
+    assert result.access_denied is True
+    assert result.admin_notify_failed is True
+
+    async with UnitOfWork(session_factory) as uow:
+        assert await uow.users.had_recent_access_request(123456789, within_seconds=86400) is True
 
 
 @pytest.mark.asyncio
