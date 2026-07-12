@@ -49,14 +49,14 @@ def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     for key, value in _base_env().items():
         monkeypatch.setenv(key, value)
-    monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "18000")
     monkeypatch.setenv("FEED_DOWNLOAD_INTERVAL", "18000")
     monkeypatch.setenv("ADMIN_CONTACT_PHONE", "")
+    monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "43200")
 
     settings = Settings()
 
     assert settings.feed_download_interval == 18000
-    assert settings.max_check_duration_seconds == 18000
+    assert settings.max_check_duration_seconds == 43200
     assert settings.admin_telegram_handle == "@el_salo"
     assert settings.admin_telegram_url == "https://t.me/el_salo"
     assert settings.admin_contact_phone_normalized is None

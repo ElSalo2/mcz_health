@@ -83,9 +83,9 @@ class Settings(BaseSettings):
         ),
     )
     max_check_duration_seconds: int = Field(
-        default=18000,
+        default=43200,
         ge=60,
-        description="Максимальная длительность одной проверки (секунды). По умолчанию 5 часов.",
+        description="Максимальная длительность одной проверки (секунды). По умолчанию 12 часов.",
     )
     local_check_reserve_seconds: int = Field(
         default=600,
