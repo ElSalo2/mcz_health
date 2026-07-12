@@ -58,6 +58,10 @@ class Settings(BaseSettings):
         ge=0,
         description="Минимальный интервал между заявками на доступ от одного Telegram ID (секунды).",
     )
+    access_request_bypass_telegram_ids: str = Field(
+        default="",
+        description="Telegram ID тестовых аккаунтов без лимита заявок (через запятую).",
+    )
 
     # --- Фиды ---
     store_feed_url: HttpUrl = Field(
@@ -195,6 +199,20 @@ class Settings(BaseSettings):
     def max_check_duration_minutes(self) -> int:
         """Максимальная длительность проверки в минутах (для документации)."""
         return self.max_check_duration_seconds // 60
+
+    def bypasses_access_request_rate_limit(self, telegram_id: int) -> bool:
+        """Проверяет, освобождён ли Telegram ID от лимита повторных заявок."""
+        return telegram_id in self.access_request_rate_limit_bypass_ids
+
+    @property
+    def access_request_rate_limit_bypass_ids(self) -> frozenset[int]:
+        """Telegram ID, для которых не действует cooldown заявок на доступ."""
+        ids: set[int] = set()
+        for part in self.access_request_bypass_telegram_ids.split(","):
+            token = part.strip()
+            if token:
+                ids.add(int(token))
+        return frozenset(ids)
 
     @property
     def admin_telegram_handle(self) -> str:

@@ -83,9 +83,12 @@ class AuthService:
             user = await uow.users.get_by_phone(normalized_phone)
 
             if user is None:
-                if await uow.users.had_recent_access_request(
-                    telegram_user.id,
-                    within_seconds=self._settings.access_request_cooldown_seconds,
+                if (
+                    not self._settings.bypasses_access_request_rate_limit(telegram_user.id)
+                    and await uow.users.had_recent_access_request(
+                        telegram_user.id,
+                        within_seconds=self._settings.access_request_cooldown_seconds,
+                    )
                 ):
                     logger.info(
                         "Повторная заявка на доступ в пределах cooldown: telegram_id=%s",

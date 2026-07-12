@@ -64,6 +64,18 @@ def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.database_url == "sqlite+aiosqlite:///./data/catalog_monitor.db"
 
 
+def test_access_request_bypass_telegram_ids(monkeypatch: pytest.MonkeyPatch) -> None:
+    for key, value in _base_env().items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("ACCESS_REQUEST_BYPASS_TELEGRAM_IDS", "401627435, 999")
+
+    settings = Settings()
+
+    assert settings.access_request_rate_limit_bypass_ids == frozenset({401627435, 999})
+    assert settings.bypasses_access_request_rate_limit(401627435) is True
+    assert settings.bypasses_access_request_rate_limit(123) is False
+
+
 def test_invalid_log_level(monkeypatch: pytest.MonkeyPatch) -> None:
     env = _base_env()
     env["LOG_LEVEL"] = "VERBOSE"
