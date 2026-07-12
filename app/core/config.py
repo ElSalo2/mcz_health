@@ -100,7 +100,7 @@ class Settings(BaseSettings):
     # --- HTTP ---
     request_timeout: float = Field(default=30.0, gt=0)
     http_url_slot_seconds: float = Field(
-        default=0.5,
+        default=0.25,
         gt=0,
         description=(
             "Пауза между HTTP-проверками URL (секунды). "

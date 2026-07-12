@@ -41,7 +41,7 @@ def test_settings_load_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.should_check_images("product") is True
     assert settings.check_social_links is False
     assert settings.local_check_reserve_seconds == 600
-    assert settings.http_url_slot_seconds == 0.5
+    assert settings.http_url_slot_seconds == 0.25
     assert settings.data_retention_days == 3
     assert settings.log_retention_days == 3
     assert settings.db_cleanup_interval == 86400

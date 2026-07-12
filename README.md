@@ -42,7 +42,7 @@ HTTP-алерты (`XML_UNAVAILABLE`, страницы, изображения) 
 | Интервал скачивания фида | сразу после завершения цикла | непрерывный цикл |
 | Макс. длительность проверки | 12 часов (`MAX_CHECK_DURATION_SECONDS=43200`) |
 | Резерв на локальные проверки | 10 мин (`LOCAL_CHECK_RESERVE_SECONDS=600`) |
-| Пауза между HTTP-проверками | 0,5 с (`HTTP_URL_SLOT_SECONDS=0.5`) |
+| Пауза между HTTP-проверками | 0,25 с (`HTTP_URL_SLOT_SECONDS=0.25`) |
 
 HTTP-проверки URL выполняются **последовательно** с фиксированной паузой `HTTP_URL_SLOT_SECONDS`
 (защита mczgold.ru и CDN). Потолок `MAX_CHECK_DURATION_SECONDS` на интервал не влияет.
