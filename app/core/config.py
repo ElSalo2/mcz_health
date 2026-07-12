@@ -94,14 +94,19 @@ class Settings(BaseSettings):
     local_check_reserve_seconds: int = Field(
         default=600,
         ge=0,
-        description=(
-            "Резерв времени на локальные проверки (парсинг XML, структура, поля). "
-            "Остаток MAX_CHECK_DURATION_SECONDS отдаётся HTTP-проверкам URL."
-        ),
+        description="Резерв времени на локальные проверки (парсинг XML, структура, поля).",
     )
 
     # --- HTTP ---
     request_timeout: float = Field(default=30.0, gt=0)
+    http_url_slot_seconds: float = Field(
+        default=0.5,
+        gt=0,
+        description=(
+            "Пауза между HTTP-проверками URL (секунды). "
+            "Защищает mczgold.ru и CDN от перегрузки; не зависит от лимита длительности цикла."
+        ),
+    )
 
     # --- Логирование ---
     log_level: str = Field(default="INFO")
@@ -181,19 +186,15 @@ class Settings(BaseSettings):
         return self
 
     @property
-    def http_check_budget_seconds(self) -> float:
-        """Время, выделенное на HTTP-проверки URL в одном цикле (секунды)."""
-        return float(self.max_check_duration_seconds - self.local_check_reserve_seconds)
+    def http_url_slot_seconds_value(self) -> float:
+        """Фиксированный интервал между HTTP-проверками URL."""
+        return float(self.http_url_slot_seconds)
 
-    def compute_http_url_slot_seconds(self, url_count: int) -> float:
-        """
-        Рассчитывает интервал между HTTP-запросами.
-
-        (MAX_CHECK_DURATION − LOCAL_CHECK_RESERVE) / количество URL.
-        """
+    def estimate_http_phase_seconds(self, url_count: int) -> float:
+        """Оценивает длительность HTTP-этапа при заданном числе URL."""
         if url_count <= 0:
             return 0.0
-        return self.http_check_budget_seconds / url_count
+        return url_count * self.http_url_slot_seconds
 
     @property
     def max_check_duration_minutes(self) -> int:

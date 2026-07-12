@@ -42,9 +42,10 @@ HTTP-алерты (`XML_UNAVAILABLE`, страницы, изображения) 
 | Интервал скачивания фида | сразу после завершения цикла | непрерывный цикл |
 | Макс. длительность проверки | 12 часов (`MAX_CHECK_DURATION_SECONDS=43200`) |
 | Резерв на локальные проверки | 10 мин (`LOCAL_CHECK_RESERVE_SECONDS=600`) |
+| Пауза между HTTP-проверками | 0,5 с (`HTTP_URL_SLOT_SECONDS=0.5`) |
 
-HTTP-проверки URL выполняются **последовательно**: интервал между запросами =
-`(MAX_CHECK_DURATION − LOCAL_CHECK_RESERVE) / количество URL` из обоих фидов.
+HTTP-проверки URL выполняются **последовательно** с фиксированной паузой `HTTP_URL_SLOT_SECONDS`
+(защита mczgold.ru и CDN). Потолок `MAX_CHECK_DURATION_SECONDS` на интервал не влияет.
 
 В расчёт входят страницы и изображения товаров, страницы и фото магазинов (дубликаты — один раз). Подробнее: [docs/MONITORING.md](docs/MONITORING.md).
 
@@ -106,6 +107,7 @@ cd catalog_monitor
 - `PRODUCT_FEED_URL` / `STORE_FEED_URL` — URL XML-фидов
 - `FEED_DOWNLOAD_INTERVAL` — интервал скачивания (сек)
 - `MAX_CHECK_DURATION_SECONDS` — лимит длительности проверки (сек)
+- `HTTP_URL_SLOT_SECONDS` — пауза между HTTP-проверками URL (сек)
 - `LOCAL_CHECK_RESERVE_SECONDS` — резерв на парсинг и локальную валидацию (сек)
 - `CHECK_MODE` — `FAST` или `FULL`
 

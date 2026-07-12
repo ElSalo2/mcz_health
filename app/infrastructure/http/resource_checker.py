@@ -18,8 +18,8 @@ class ResourceChecker:
     """
     Проверяет доступность ресурсов последовательно с равномерным интервалом.
 
-    Интервал задаётся через UrlThrottlePlanner и рассчитывается как
-    (бюджет HTTP-проверок) / (количество URL), чтобы не перегружать сайт.
+    Интервал задаётся через UrlThrottlePlanner (HTTP_URL_SLOT_SECONDS),
+    чтобы не перегружать сайт МЦЗ.
     """
 
     def __init__(self, http_client: HttpClient, throttle_planner: UrlThrottlePlanner) -> None:

@@ -11,23 +11,15 @@ logger = logging.getLogger(__name__)
 
 class UrlThrottlePlanner:
     """
-    Распределяет HTTP-проверки равномерно в отведённом бюджете времени.
+    Задаёт фиксированную паузу между HTTP-запросами.
 
-    Бюджет = MAX_CHECK_DURATION_SECONDS − LOCAL_CHECK_RESERVE_SECONDS.
-    Интервал на один URL = бюджет / количество URL.
-  """
+    Интервал настраивается через HTTP_URL_SLOT_SECONDS и не зависит
+    от MAX_CHECK_DURATION_SECONDS (это только потолок цикла).
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
         self._slot_seconds: float | None = None
-
-    @property
-    def http_check_budget_seconds(self) -> float:
-        """Время, выделенное на HTTP-проверки в одном цикле (секунды)."""
-        return float(
-            self._settings.max_check_duration_seconds
-            - self._settings.local_check_reserve_seconds
-        )
 
     @property
     def slot_seconds(self) -> float | None:
@@ -36,9 +28,9 @@ class UrlThrottlePlanner:
 
     def plan_for_url_count(self, url_count: int) -> float:
         """
-        Рассчитывает интервал между HTTP-запросами для заданного числа URL.
+        Возвращает интервал между HTTP-запросами для цикла.
 
-        Возвращает 0.0, если HTTP-проверки не требуются.
+        Количество URL используется только для оценки длительности и предупреждений.
         """
         if url_count < 0:
             raise ValueError("Количество URL не может быть отрицательным")
@@ -48,21 +40,26 @@ class UrlThrottlePlanner:
             logger.info("HTTP-проверки URL не требуются (0 URL)")
             return 0.0
 
-        budget = self.http_check_budget_seconds
-        if budget <= 0:
-            raise ValueError(
-                "Бюджет HTTP-проверок должен быть положительным. "
-                "Увеличьте MAX_CHECK_DURATION_SECONDS или уменьшите "
-                "LOCAL_CHECK_RESERVE_SECONDS."
+        slot = self._settings.http_url_slot_seconds_value
+        self._slot_seconds = slot
+        estimated_http = self._settings.estimate_http_phase_seconds(url_count)
+        estimated_total = estimated_http + self._settings.local_check_reserve_seconds
+        if estimated_total > self._settings.max_check_duration_seconds:
+            logger.warning(
+                "Оценка длительности цикла %.0f с превышает лимит %s с "
+                "(HTTP %.0f с + локальные %s с). "
+                "Увеличьте MAX_CHECK_DURATION_SECONDS или уменьшите HTTP_URL_SLOT_SECONDS.",
+                estimated_total,
+                self._settings.max_check_duration_seconds,
+                estimated_http,
+                self._settings.local_check_reserve_seconds,
             )
 
-        slot = budget / url_count
-        self._slot_seconds = slot
         logger.info(
-            "HTTP-троттлинг: %s URL, бюджет %.0f с, интервал %.3f с/URL",
+            "HTTP-троттлинг: %s URL, интервал %.3f с/URL, оценка HTTP-этапа %.0f с",
             url_count,
-            budget,
             slot,
+            estimated_http,
         )
         return slot
 

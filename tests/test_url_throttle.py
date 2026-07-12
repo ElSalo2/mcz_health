@@ -18,25 +18,23 @@ def settings(monkeypatch: pytest.MonkeyPatch) -> Settings:
         "PRODUCT_FEED_URL",
         "https://st.sunlight.net/media/feed/anyquery_mcz.xml",
     )
-    monkeypatch.setenv("MAX_CHECK_DURATION_SECONDS", "10740")
-    monkeypatch.setenv("LOCAL_CHECK_RESERVE_SECONDS", "600")
+    monkeypatch.setenv("HTTP_URL_SLOT_SECONDS", "0.5")
     return Settings()
 
 
-def test_http_check_budget(settings: Settings) -> None:
-    assert settings.http_check_budget_seconds == 10140.0
+def test_http_url_slot_seconds_default(settings: Settings) -> None:
+    assert settings.http_url_slot_seconds == 0.5
 
 
-def test_compute_http_url_slot_seconds(settings: Settings) -> None:
-    slot = settings.compute_http_url_slot_seconds(10140)
-    assert slot == pytest.approx(1.0)
+def test_estimate_http_phase_seconds(settings: Settings) -> None:
+    assert settings.estimate_http_phase_seconds(47000) == pytest.approx(23500.0)
 
 
-def test_plan_for_url_count(settings: Settings) -> None:
+def test_plan_for_url_count_uses_fixed_slot(settings: Settings) -> None:
     planner = UrlThrottlePlanner(settings)
     slot = planner.plan_for_url_count(46768)
-    assert slot == pytest.approx(10140 / 46768, rel=1e-4)
-    assert planner.slot_seconds == slot
+    assert slot == pytest.approx(0.5)
+    assert planner.slot_seconds == pytest.approx(0.5)
 
 
 def test_plan_for_zero_urls(settings: Settings) -> None:
@@ -47,9 +45,9 @@ def test_plan_for_zero_urls(settings: Settings) -> None:
 def test_seconds_until_next_request(settings: Settings) -> None:
     planner = UrlThrottlePlanner(settings)
     planner.plan_for_url_count(10)
-    assert planner.seconds_until_next_request(0.0) == pytest.approx(1014.0)
-    assert planner.seconds_until_next_request(500.0) == pytest.approx(514.0)
-    assert planner.seconds_until_next_request(1200.0) == 0.0
+    assert planner.seconds_until_next_request(0.0) == pytest.approx(0.5)
+    assert planner.seconds_until_next_request(0.2) == pytest.approx(0.3)
+    assert planner.seconds_until_next_request(0.5) == 0.0
 
 
 def test_local_reserve_must_be_less_than_max_duration(
