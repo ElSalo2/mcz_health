@@ -168,6 +168,9 @@ class Messages:
     PROBLEMS_INTERRUPTED = "проверка прервана до завершения (перезапуск сервиса)"
     PROBLEMS_IN_PROGRESS = "результат будет после завершения проверки"
     PROBLEMS_FOUND = "критических — {critical}, предупреждений — {warnings}"
+    ISSUES_BREAKDOWN_CRITICAL = "Критические проблемы:"
+    ISSUES_BREAKDOWN_WARNINGS = "Предупреждения:"
+    ISSUES_BREAKDOWN_ITEM = "• {label} ({code}): {count}"
 
     # --- Администрирование ---
     ADMIN_ACCESS_DENIED = "⛔ Эта функция доступна только администратору."

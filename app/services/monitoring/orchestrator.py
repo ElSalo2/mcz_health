@@ -26,6 +26,7 @@ from app.services.monitoring.check_stats_builder import build_initial_stats
 from app.services.monitoring.check_stats_tracker import CheckStatsTracker
 from app.services.monitoring.feed_availability import FeedAvailabilityChecker
 from app.services.monitoring.feed_structure import FeedStructureChecker
+from app.services.monitoring.issue_breakdown import count_issues_by_type
 from app.services.monitoring.issue_registry import IssueRegistry
 from app.services.monitoring.price_validator import PriceValidationResult, PriceValidator
 from app.services.monitoring.product_validator import ProductValidator
@@ -368,11 +369,14 @@ class CheckOrchestrator:
         status = CheckStatus.FAILED if prepared.failed else CheckStatus.SUCCESS
         critical_count = sum(1 for issue in issues if issue.severity.value == "critical")
         warning_count = sum(1 for issue in issues if issue.severity.value == "warning")
+        warnings_by_type, critical_by_type = count_issues_by_type(issues)
         final_stats_json = None
         if self._stats_tracker is not None:
             await self._stats_tracker.flush()
             stats = self._stats_tracker.get_stats(feed_type)
             if stats is not None:
+                stats.warnings_by_type = warnings_by_type
+                stats.critical_by_type = critical_by_type
                 final_stats_json = dump_json(stats.to_dict())
 
         async with UnitOfWork(self._session_factory) as uow:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from app.bot.formatters.issue_labels import issue_type_label
 from app.domain.entities.feed_check import FeedCheck
 from app.domain.enums import CheckStatus, FeedType
 from app.domain.value_objects.check_stats import CheckStats
@@ -77,10 +78,57 @@ def format_problems_summary(critical: int, warnings: int, *, status: CheckStatus
 
 
 def _format_progress(checked: int, planned: int) -> str:
+    checked_text = f"{checked:,}".replace(",", " ")
     if planned <= 0:
-        return str(checked)
-    percent = min(100, round(checked / planned * 100))
-    return f"{checked:,}".replace(",", " ") + f" из {planned:,}".replace(",", " ") + f" ({percent}%)"
+        return checked_text
+    planned_text = f"{planned:,}".replace(",", " ")
+    percent = round(checked / planned * 100)
+    if checked > planned:
+        extra = checked - planned
+        extra_text = f"{extra:,}".replace(",", " ")
+        return (
+            f"{checked_text} из {planned_text} ({percent}%, "
+            f"+{extra_text} повторных URL)"
+        )
+    return f"{checked_text} из {planned_text} ({percent}%)"
+
+
+def _format_issue_count_lines(
+    counts: dict[str, int],
+    *,
+    header: str,
+) -> list[str]:
+    if not counts:
+        return []
+    lines = [header]
+    for message_key, count in sorted(counts.items(), key=lambda item: (-item[1], item[0])):
+        label = issue_type_label(message_key)
+        lines.append(
+            Messages.ISSUES_BREAKDOWN_ITEM.format(
+                label=label,
+                code=message_key,
+                count=f"{count:,}".replace(",", " "),
+            )
+        )
+    return lines
+
+
+def format_issues_breakdown(check: FeedCheck, stats: CheckStats | None = None) -> str:
+    """Форматирует расшифровку критических проблем и предупреждений."""
+    if check.status == CheckStatus.RUNNING:
+        return ""
+
+    if stats is None:
+        stats = _stats_from_check(check)
+
+    lines: list[str] = []
+    lines.extend(
+        _format_issue_count_lines(stats.critical_by_type, header=Messages.ISSUES_BREAKDOWN_CRITICAL)
+    )
+    lines.extend(
+        _format_issue_count_lines(stats.warnings_by_type, header=Messages.ISSUES_BREAKDOWN_WARNINGS)
+    )
+    return "\n".join(lines)
 
 
 def _stats_from_check(check: FeedCheck) -> CheckStats:
@@ -248,10 +296,15 @@ def format_feed_check_summary(check: FeedCheck) -> str:
         else Messages.FINISHED_AT_UNKNOWN,
         duration=format_duration(check.duration_seconds),
     )
+    stats = _stats_from_check(check)
+    issues_breakdown = format_issues_breakdown(check, stats)
     stats_block = format_check_stats_block(check)
+    parts = [summary]
+    if issues_breakdown:
+        parts.append(issues_breakdown)
     if stats_block:
-        return f"{summary}\n{stats_block}"
-    return summary
+        parts.append(stats_block)
+    return "\n".join(parts)
 
 
 def format_feed_check_view(view: FeedCheckView) -> str:
@@ -329,6 +382,9 @@ def format_history_report(checks: list[FeedCheck]) -> str:
                 duration=format_duration(check.duration_seconds),
             )
         )
+        issues_breakdown = format_issues_breakdown(check)
+        if issues_breakdown:
+            lines.append(issues_breakdown)
         stats_block = format_check_stats_block(check)
         if stats_block:
             lines.append(stats_block)

@@ -7,11 +7,7 @@ from app.domain.enums import FeedType
 from app.domain.value_objects.check_stats import CheckStats
 from app.infrastructure.xml.extractors import FeedExtractor, ProductItem, StoreItem
 from app.infrastructure.xml.parser import ParsedFeed
-from app.services.monitoring.url_collector import (
-    collect_product_http_urls,
-    collect_store_http_urls,
-    store_page_urls,
-)
+from app.services.monitoring.url_collector import store_page_urls
 
 
 def _count_product_images(products: list[ProductItem], settings: Settings) -> int:
@@ -58,7 +54,7 @@ def build_initial_stats(
         stats.stocks_checked = len(products)
         stats.prices_checked = len(products)
         stats.categories_validated = len(products)
-        stats.http_total_planned = len(collect_product_http_urls(products, settings))
+        stats.http_total_planned = stats.product_pages_planned + stats.product_images_planned
         _apply_http_timing_estimate(
             stats,
             settings=settings,
@@ -74,7 +70,7 @@ def build_initial_stats(
         stats.store_pages_planned += sum(len(store.social_links) for store in stores)
     stats.store_images_planned = _count_store_images(stores, settings)
     stats.required_fields_checked = len(stores) * 3
-    stats.http_total_planned = len(collect_store_http_urls(stores, settings))
+    stats.http_total_planned = stats.store_pages_planned + stats.store_images_planned
     _apply_http_timing_estimate(
         stats,
         settings=settings,

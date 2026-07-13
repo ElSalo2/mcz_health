@@ -40,6 +40,9 @@ class CheckStats:
     http_total_checked: int = 0
     http_total_ok: int = 0
 
+    warnings_by_type: dict[str, int] = field(default_factory=dict)
+    critical_by_type: dict[str, int] = field(default_factory=dict)
+
     skip_http: bool = False
 
     max_duration_seconds: int = 0
@@ -59,4 +62,7 @@ class CheckStats:
         values = {key: data[key] for key in known if key in data}
         if "extra" in data and isinstance(data["extra"], dict):
             values["extra"] = data["extra"]
+        for key in ("warnings_by_type", "critical_by_type"):
+            if key in data and isinstance(data[key], dict):
+                values[key] = {str(k): int(v) for k, v in data[key].items()}
         return cls(**values)
