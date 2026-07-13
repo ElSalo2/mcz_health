@@ -100,9 +100,15 @@ HTTP-проверки URL выполняются **строго последов
 
 Политика задаётся списками `message_key` в `alert_policy.py`. Шаблоны — в `app/locales/messages.py`.
 
-### CRITICAL → Telegram
+### CRITICAL → Telegram (сразу при обнаружении HTTP-ошибки)
 
-`XML_UNAVAILABLE`, `XML_ERROR`, `PRODUCT_PAGE_UNAVAILABLE`, `PRODUCT_IMAGE_UNAVAILABLE`, `STORE_IMAGE_UNAVAILABLE`, `PRODUCT_MISSING_PICTURE`, `STORE_MISSING_PHOTO`, `PRODUCT_MISSING_CATEGORY`, `PRODUCT_INVALID_CATEGORY`, `PRODUCT_MISSING_NAME`, `PRODUCT_MISSING_PRICE`, `PRODUCT_INVALID_PRICE`, `CATEGORY_INVALID_PARENT`, `DUPLICATE_IDS`
+`XML_UNAVAILABLE`, `XML_ERROR`, `PRODUCT_PAGE_UNAVAILABLE`, `PRODUCT_IMAGE_UNAVAILABLE`, `STORE_IMAGE_UNAVAILABLE`, …
+
+HTTP-алерты по страницам и изображениям отправляются **сразу** при проверке URL, не дожидаясь конца цикла (3+ часа). Повторно не шлются, если та же проблема уже была в `active_errors`.
+
+### CRITICAL → Telegram (в конце цикла)
+
+`PRODUCT_MISSING_PICTURE`, `STORE_MISSING_PHOTO`, `PRODUCT_MISSING_CATEGORY`, `PRODUCT_INVALID_CATEGORY`, `PRODUCT_MISSING_NAME`, `PRODUCT_MISSING_PRICE`, `PRODUCT_INVALID_PRICE`, `CATEGORY_INVALID_PARENT`, `DUPLICATE_IDS`
 
 HTTP-алерты — только при ответе **4xx/5xx**.
 

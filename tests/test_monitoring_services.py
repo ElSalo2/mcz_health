@@ -154,6 +154,7 @@ async def test_fail_incomplete_checks_closes_running(session_factory, settings: 
         MagicMock(),
         MagicMock(),
         MagicMock(),
+        None,
     )
     started_at = datetime.now(UTC)
     async with UnitOfWork(session_factory) as uow:

@@ -13,6 +13,7 @@ from app.services.monitoring.change_detector import ChangeDetector
 from app.services.monitoring.feed_availability import FeedAvailabilityChecker
 from app.services.monitoring.feed_structure import FeedStructureChecker
 from app.services.monitoring.image_checker import ImageChecker
+from app.services.monitoring.live_issue_reporter import LiveIssueReporter
 from app.services.monitoring.orchestrator import CheckOrchestrator
 from app.services.monitoring.price_validator import PriceValidator
 from app.services.monitoring.product_validator import ProductValidator
@@ -36,7 +37,8 @@ async def build_monitoring_stack(
     xml_parser = XmlParser()
     feed_extractor = FeedExtractor()
     change_detector = ChangeDetector(config)
-    image_checker = ImageChecker(resource_checker, config)
+    live_issue_reporter = LiveIssueReporter(session_factory, notification_service)
+    image_checker = ImageChecker(resource_checker, config, live_issue_reporter)
 
     availability_checker = FeedAvailabilityChecker(http_client, config)
     structure_checker = FeedStructureChecker(xml_parser)
@@ -47,10 +49,17 @@ async def build_monitoring_stack(
         feed_extractor,
         category_validator,
         config,
+        live_issue_reporter,
     )
     price_validator = PriceValidator(config)
     stock_validator = StockValidator()
-    store_validator = StoreValidator(resource_checker, image_checker, change_detector, config)
+    store_validator = StoreValidator(
+        resource_checker,
+        image_checker,
+        change_detector,
+        config,
+        live_issue_reporter,
+    )
 
     orchestrator = CheckOrchestrator(
         settings=config,
@@ -66,6 +75,7 @@ async def build_monitoring_stack(
         resource_checker=resource_checker,
         throttle_planner=throttle_planner,
         notification_service=notification_service,
+        live_issue_reporter=live_issue_reporter,
     )
     continuous_monitoring = ContinuousMonitoringService(
         config,

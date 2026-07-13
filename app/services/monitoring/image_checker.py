@@ -12,6 +12,7 @@ from app.infrastructure.database.utils import utc_now
 from app.infrastructure.http.client import HttpResponse
 from app.infrastructure.http.resource_checker import ResourceChecker
 from app.services.monitoring.issue_registry import IssueRegistry
+from app.services.monitoring.live_issue_reporter import LiveIssueReporter
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,15 @@ IMAGE_CONTENT_PREFIX = "image/"
 class ImageChecker:
     """Проверяет доступность и корректность изображений."""
 
-    def __init__(self, resource_checker: ResourceChecker, settings: Settings) -> None:
+    def __init__(
+        self,
+        resource_checker: ResourceChecker,
+        settings: Settings,
+        live_issue_reporter: LiveIssueReporter | None = None,
+    ) -> None:
         self._resource_checker = resource_checker
         self._settings = settings
+        self._live_issue_reporter = live_issue_reporter
 
     async def check_images(
         self,
@@ -57,6 +64,10 @@ class ImageChecker:
                 address=address,
             )
             issues.extend(image_issues)
+            for issue in image_issues:
+                if issue.message_key in {"PRODUCT_IMAGE_UNAVAILABLE", "STORE_IMAGE_UNAVAILABLE"}:
+                    if self._live_issue_reporter is not None:
+                        await self._live_issue_reporter.report_http_issue(issue)
 
         return issues
 

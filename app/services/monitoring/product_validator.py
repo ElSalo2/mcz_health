@@ -18,6 +18,7 @@ from app.services.monitoring.alert_context import format_duplicate_values
 from app.services.monitoring.category_validator import CategoryValidator
 from app.services.monitoring.image_checker import ImageChecker
 from app.services.monitoring.issue_registry import IssueRegistry
+from app.services.monitoring.live_issue_reporter import LiveIssueReporter
 
 logger = logging.getLogger(__name__)
 
@@ -32,12 +33,18 @@ class ProductValidator:
         feed_extractor: FeedExtractor,
         category_validator: CategoryValidator,
         settings: Settings,
+        live_issue_reporter: LiveIssueReporter | None = None,
     ) -> None:
         self._resource_checker = resource_checker
         self._image_checker = image_checker
         self._feed_extractor = feed_extractor
         self._category_validator = category_validator
         self._settings = settings
+        self._live_issue_reporter = live_issue_reporter
+
+    async def _report_http_issue(self, issue: Issue) -> None:
+        if self._live_issue_reporter is not None:
+            await self._live_issue_reporter.report_http_issue(issue)
 
     async def validate(
         self,
@@ -70,30 +77,30 @@ class ProductValidator:
                         if response.status_code is not None
                         else (response.error or "ошибка")
                     )
-                    issues.append(
-                        Issue(
-                            fingerprint=IssueRegistry.build_fingerprint(
-                                IssueCategory.URL_UNAVAILABLE,
-                                FeedType.PRODUCT,
-                                object_id=product.offer_id,
-                                url=product.url,
-                            ),
-                            severity=Severity.CRITICAL,
-                            category=IssueCategory.URL_UNAVAILABLE,
-                            feed_type=FeedType.PRODUCT,
-                            message_key="PRODUCT_PAGE_UNAVAILABLE",
+                    issue = Issue(
+                        fingerprint=IssueRegistry.build_fingerprint(
+                            IssueCategory.URL_UNAVAILABLE,
+                            FeedType.PRODUCT,
                             object_id=product.offer_id,
-                            object_name=product.name,
-                            context={
-                                "id": product.offer_id,
-                                "name": product.name,
-                                "url": product.url,
-                                "status": status,
-                                "feed_date": feed_date or "—",
-                                "check_date": check_date,
-                            },
-                        )
+                            url=product.url,
+                        ),
+                        severity=Severity.CRITICAL,
+                        category=IssueCategory.URL_UNAVAILABLE,
+                        feed_type=FeedType.PRODUCT,
+                        message_key="PRODUCT_PAGE_UNAVAILABLE",
+                        object_id=product.offer_id,
+                        object_name=product.name,
+                        context={
+                            "id": product.offer_id,
+                            "name": product.name,
+                            "url": product.url,
+                            "status": status,
+                            "feed_date": feed_date or "—",
+                            "check_date": check_date,
+                        },
                     )
+                    issues.append(issue)
+                    await self._report_http_issue(issue)
 
             if self._settings.should_check_images("product"):
                 issues.extend(

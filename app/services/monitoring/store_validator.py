@@ -19,6 +19,7 @@ from app.services.monitoring.alert_context import format_duplicate_values
 from app.services.monitoring.change_detector import ChangeDetector
 from app.services.monitoring.image_checker import ImageChecker
 from app.services.monitoring.issue_registry import IssueRegistry
+from app.services.monitoring.live_issue_reporter import LiveIssueReporter
 from app.services.monitoring.url_collector import store_page_urls
 
 logger = logging.getLogger(__name__)
@@ -33,11 +34,17 @@ class StoreValidator:
         image_checker: ImageChecker,
         change_detector: ChangeDetector,
         settings: Settings,
+        live_issue_reporter: LiveIssueReporter | None = None,
     ) -> None:
         self._resource_checker = resource_checker
         self._image_checker = image_checker
         self._change_detector = change_detector
         self._settings = settings
+        self._live_issue_reporter = live_issue_reporter
+
+    async def _report_http_issue(self, issue: Issue) -> None:
+        if self._live_issue_reporter is not None:
+            await self._live_issue_reporter.report_http_issue(issue)
 
     async def validate(
         self,
@@ -75,29 +82,29 @@ class StoreValidator:
                         if response.status_code is not None
                         else (response.error or "ошибка")
                     )
-                    issues.append(
-                        Issue(
-                            fingerprint=IssueRegistry.build_fingerprint(
-                                IssueCategory.URL_UNAVAILABLE,
-                                FeedType.STORE,
-                                object_id=store.company_id,
-                                url=url,
-                            ),
-                            severity=Severity.CRITICAL,
-                            category=IssueCategory.URL_UNAVAILABLE,
-                            feed_type=FeedType.STORE,
-                            message_key="PRODUCT_PAGE_UNAVAILABLE",
+                    issue = Issue(
+                        fingerprint=IssueRegistry.build_fingerprint(
+                            IssueCategory.URL_UNAVAILABLE,
+                            FeedType.STORE,
                             object_id=store.company_id,
-                            object_name=store.name,
-                            context={
-                                "id": store.company_id,
-                                "name": store.name,
-                                "status": status,
-                                "feed_date": store.actualization_date or "—",
-                                "check_date": check_date,
-                            },
-                        )
+                            url=url,
+                        ),
+                        severity=Severity.CRITICAL,
+                        category=IssueCategory.URL_UNAVAILABLE,
+                        feed_type=FeedType.STORE,
+                        message_key="PRODUCT_PAGE_UNAVAILABLE",
+                        object_id=store.company_id,
+                        object_name=store.name,
+                        context={
+                            "id": store.company_id,
+                            "name": store.name,
+                            "status": status,
+                            "feed_date": store.actualization_date or "—",
+                            "check_date": check_date,
+                        },
                     )
+                    issues.append(issue)
+                    await self._report_http_issue(issue)
 
             if self._settings.should_check_images("store"):
                 issues.extend(
@@ -119,29 +126,29 @@ class StoreValidator:
                             if response.status_code is not None
                             else (response.error or "ошибка")
                         )
-                        issues.append(
-                            Issue(
-                                fingerprint=IssueRegistry.build_fingerprint(
-                                    IssueCategory.URL_UNAVAILABLE,
-                                    FeedType.STORE,
-                                    object_id=store.company_id,
-                                    url=link,
-                                ),
-                                severity=Severity.CRITICAL,
-                                category=IssueCategory.URL_UNAVAILABLE,
-                                feed_type=FeedType.STORE,
-                                message_key="PRODUCT_PAGE_UNAVAILABLE",
+                        issue = Issue(
+                            fingerprint=IssueRegistry.build_fingerprint(
+                                IssueCategory.URL_UNAVAILABLE,
+                                FeedType.STORE,
                                 object_id=store.company_id,
-                                object_name=store.name,
-                                context={
-                                    "id": store.company_id,
-                                    "name": store.name,
-                                    "status": status,
-                                    "feed_date": store.actualization_date or "—",
-                                    "check_date": check_date,
-                                },
-                            )
+                                url=link,
+                            ),
+                            severity=Severity.CRITICAL,
+                            category=IssueCategory.URL_UNAVAILABLE,
+                            feed_type=FeedType.STORE,
+                            message_key="PRODUCT_PAGE_UNAVAILABLE",
+                            object_id=store.company_id,
+                            object_name=store.name,
+                            context={
+                                "id": store.company_id,
+                                "name": store.name,
+                                "status": status,
+                                "feed_date": store.actualization_date or "—",
+                                "check_date": check_date,
+                            },
                         )
+                        issues.append(issue)
+                        await self._report_http_issue(issue)
 
         return issues
 

@@ -27,6 +27,7 @@ from app.services.monitoring.check_stats_tracker import CheckStatsTracker
 from app.services.monitoring.feed_availability import FeedAvailabilityChecker
 from app.services.monitoring.feed_structure import FeedStructureChecker
 from app.services.monitoring.issue_breakdown import count_issues_by_type
+from app.services.monitoring.live_issue_reporter import LiveIssueReporter
 from app.services.monitoring.issue_registry import IssueRegistry
 from app.services.monitoring.price_validator import PriceValidationResult, PriceValidator
 from app.services.monitoring.product_validator import ProductValidator
@@ -74,6 +75,7 @@ class CheckOrchestrator:
         resource_checker: ResourceChecker,
         throttle_planner: UrlThrottlePlanner,
         notification_service: NotificationService,
+        live_issue_reporter: LiveIssueReporter | None = None,
     ) -> None:
         self._settings = settings
         self._session_factory = session_factory
@@ -88,6 +90,7 @@ class CheckOrchestrator:
         self._resource_checker = resource_checker
         self._throttle_planner = throttle_planner
         self._notification_service = notification_service
+        self._live_issue_reporter = live_issue_reporter
         self._running_checks: set[FeedType] = set()
         self._stats_tracker: CheckStatsTracker | None = None
         self._cycle_lock = asyncio.Lock()
@@ -231,6 +234,8 @@ class CheckOrchestrator:
         if not availability.available or not availability.content:
             if availability.issue is not None:
                 prepared.issues.append(availability.issue)
+                if self._live_issue_reporter is not None:
+                    await self._live_issue_reporter.report_http_issue(availability.issue)
             prepared.failed = True
             return prepared
 
@@ -240,6 +245,8 @@ class CheckOrchestrator:
         if not structure.valid or structure.parsed is None:
             if structure.issue is not None:
                 prepared.issues.append(structure.issue)
+                if self._live_issue_reporter is not None:
+                    await self._live_issue_reporter.report_http_issue(structure.issue)
             prepared.failed = True
             return prepared
 
