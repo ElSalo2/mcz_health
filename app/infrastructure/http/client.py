@@ -6,6 +6,18 @@ from dataclasses import dataclass
 
 import httpx
 
+DEFAULT_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+
+WAF_BODY_PEEK_BYTES = 1024
+
 
 @dataclass(slots=True)
 class HttpResponse:
@@ -33,6 +45,7 @@ class HttpClient:
             timeout=httpx.Timeout(self._timeout),
             limits=limits,
             follow_redirects=True,
+            headers=DEFAULT_BROWSER_HEADERS,
         )
 
     async def stop(self) -> None:
@@ -71,6 +84,7 @@ class HttpClient:
                 status_code=response.status_code,
                 content_type=response.headers.get("content-type"),
                 content_length=_parse_content_length(response.headers.get("content-length")),
+                content=response.content[:WAF_BODY_PEEK_BYTES],
             )
         except Exception as exc:
             return HttpResponse(

@@ -8,6 +8,7 @@ import time
 from collections.abc import Callable
 
 from app.infrastructure.http.client import HttpClient, HttpResponse
+from app.infrastructure.http.waf_detection import is_waf_challenge
 from app.services.monitoring.check_stats_tracker import CheckStatsTracker
 from app.services.monitoring.url_throttle import UrlThrottlePlanner
 
@@ -41,7 +42,7 @@ class ResourceChecker:
             raise asyncio.CancelledError("HTTP-проверки прерваны")
 
     async def check_url(self, url: str, *, kind: str = "unknown") -> HttpResponse:
-        """Проверяет URL: сначала HEAD, при неудаче — GET с Range."""
+        """Проверяет URL: HEAD, при неудаче — повтор HEAD и лёгкий GET с Range."""
         self._ensure_not_aborted()
         started = time.perf_counter()
         try:
@@ -49,7 +50,27 @@ class ResourceChecker:
             if response.status_code is not None and response.status_code < 400:
                 pass
             else:
-                response = await self._http_client.get_range(url)
+                head_status = response.status_code
+                retry = await self._http_client.head(url)
+                if retry.status_code is not None and retry.status_code < 400:
+                    response = retry
+                else:
+                    fallback = await self._http_client.get_range(url)
+                    if is_waf_challenge(fallback):
+                        logger.info(
+                            "WAF-challenge для %s (HEAD=%s, GET=%s), считаем URL доступным",
+                            url,
+                            head_status,
+                            fallback.status_code,
+                        )
+                        response = HttpResponse(
+                            url=url,
+                            status_code=200,
+                            content_type=fallback.content_type,
+                            content_length=fallback.content_length,
+                        )
+                    else:
+                        response = fallback
         except Exception as exc:
             logger.debug("Ошибка проверки URL %s: %s", url, exc)
             response = HttpResponse(
